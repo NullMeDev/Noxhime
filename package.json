@@ -9,19 +9,19 @@
     "test-alert": "curl -X POST http://localhost:5000/alert -H 'Content-Type: application/json' -d '{\"title\": \"Test Alert\", \"body\": \"This is a test alert from the command line\", \"severity\": \"info\"}'"
   },
   "devDependencies": {
-    "@types/express": "^5.0.2",
-    "@types/node": "^22.15.21",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.5",
     "ts-node": "^10.9.2",
-    "typescript": "^5.8.3"
+    "typescript": "^5.3.3"
   },
   "dependencies": {
-    "@types/cors": "^2.8.18",
+    "@types/cors": "^2.8.17",
     "cors": "^2.8.5",
-    "discord.js": "^14.19.3",
-    "dotenv": "^16.5.0",
-    "express": "^5.1.0",
-    "openai": "^4.103.0",
-    "sqlite3": "^5.1.7"
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "openai": "^4.24.1",
+    "sqlite3": "^5.1.6"
   },
   "description": "Autonomous Discord bot with system monitoring and OpenAI integration.",
   "repository": {

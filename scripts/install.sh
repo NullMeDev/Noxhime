@@ -35,12 +35,17 @@ for cmd in "${REQUIRED_CMDS[@]}"; do
 done
 
 # Install Node.js & build essentials
-curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+# Use Node.js 20.x for Ubuntu 24.04 compatibility
+apt install -y ca-certificates curl gnupg
+mkdir -p /etc/apt/keyrings
+curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
+apt update
 apt install -y nodejs build-essential
 
 # Install TypeScript tools
 echo "[+] Installing ts-node + typescript"
-npm install -g typescript ts-node
+npm install -g typescript@latest ts-node@latest --no-fund --no-audit
 
 # Install SQLite libs
 echo "[+] Installing sqlite3"
@@ -52,7 +57,7 @@ apt install -y nginx certbot python3-certbot-nginx
 
 # Install PM2
 echo "[+] Installing PM2 for process management"
-npm install -g pm2
+npm install -g pm2@latest --no-fund --no-audit
 
 # Install Monit and Fail2Ban for system monitoring
 echo "[+] Installing Monit and Fail2Ban"
@@ -83,7 +88,7 @@ cd "$BOT_PATH"
 
 # Install project dependencies
 echo "[+] Installing Node.js dependencies"
-sudo -u "$BOT_USER" npm install
+sudo -u "$BOT_USER" npm install --no-fund --legacy-peer-deps
 
 # Create directories for PID file and logs
 mkdir -p "$(dirname "$BOT_PATH/noxhime.pid")"
@@ -142,8 +147,10 @@ for JAIL in "${JAILS_TO_MONITOR[@]}"; do
 done
 
 # Install systemd service
-echo "[+] Installing systemd service"
+echo "[+] Installing systemd services"
 cp "$BOT_PATH/systemd/noxhime-bot.service" /etc/systemd/system/
+cp "$BOT_PATH/systemd/noxhime-update.service" /etc/systemd/system/
+cp "$BOT_PATH/systemd/noxhime-update.timer" /etc/systemd/system/
 systemctl daemon-reload
 
 # Start services
@@ -151,10 +158,12 @@ echo "[+] Starting services"
 systemctl enable monit
 systemctl enable fail2ban
 systemctl enable noxhime-bot
+systemctl enable noxhime-update.timer
 
 systemctl restart fail2ban
 systemctl restart monit
 systemctl restart noxhime-bot
+systemctl start noxhime-update.timer
 
 # Tag install point in git
 if git rev-parse --git-dir > /dev/null 2>&1; then

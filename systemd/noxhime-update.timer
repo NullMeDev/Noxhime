@@ -1,0 +1,14 @@
+[Unit]
+Description=Noxhime Bot Auto-Update Timer
+Requires=noxhime-update.service
+
+[Timer]
+# Run once a day (adjust as needed)
+OnCalendar=*-*-* 4:00:00
+# Add randomization window to prevent all instances updating at the same time
+RandomizedDelaySec=3600
+# Keep track of last execution to catch up on missed runs
+Persistent=true
+
+[Install]
+WantedBy=timers.target

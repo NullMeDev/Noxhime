@@ -46,6 +46,9 @@ const child_process_1 = require("child_process");
 const sentinel_1 = require("./sentinel");
 const personality_1 = require("./personality");
 const db = __importStar(require("./db"));
+const whitelist_1 = require("./whitelist");
+const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config();
 /**
  * API module for web dashboard integration with nullme.lol
  */
@@ -64,6 +67,15 @@ class ApiServer {
     setupMiddleware() {
         this.app.use((0, cors_1.default)());
         this.app.use(express_1.default.json());
+        // Load and apply whitelist configuration if enabled
+        const whitelistEnabled = process.env.WHITELIST_ENABLED === 'true';
+        if (whitelistEnabled) {
+            const whitelistConfigPath = process.env.WHITELIST_CONFIG_PATH || './config/whitelist.json';
+            const whitelistConfig = (0, whitelist_1.loadWhitelistConfig)(whitelistConfigPath);
+            // Apply whitelist middleware before API key authentication
+            this.app.use((0, whitelist_1.whitelistMiddleware)(whitelistConfig));
+            console.log('IP/Port whitelist protection enabled');
+        }
         // API key authentication middleware
         this.app.use('/api', (req, res, next) => {
             const apiKey = req.headers['x-api-key'];

@@ -83,6 +83,20 @@ install_prerequisites() {
     status "Debian/Ubuntu system detected"
     status "Installing required tools..."
     sudo apt-get update
+    
+    # For Ubuntu 24.04 and newer, use the NodeSource repository for newer Node.js
+    if [ -f /etc/os-release ]; then
+      . /etc/os-release
+      if [[ "$ID" == "ubuntu" && "${VERSION_ID%%.*}" -ge 24 ]]; then
+        status "Ubuntu 24.04 or later detected, using NodeSource repository..."
+        sudo apt-get install -y ca-certificates curl gnupg
+        sudo mkdir -p /etc/apt/keyrings
+        curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+        echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
+        sudo apt-get update
+      fi
+    fi
+    
     sudo apt-get install -y git curl wget nodejs npm sqlite3 build-essential
   elif command_exists yum; then
     status "RHEL/CentOS system detected"
@@ -105,9 +119,9 @@ install_prerequisites() {
     fi
   fi
   
-  # Install global Node.js packages
+  # Install global Node.js packages with version controls
   status "Installing TypeScript and PM2..."
-  sudo npm install -g typescript ts-node pm2
+  sudo npm install -g typescript@latest ts-node@latest pm2@latest --no-fund --no-audit
   
   success "Prerequisites installed successfully!"
 }
@@ -224,6 +238,11 @@ SYSTEM_STATS_INTERVAL=3600000
 # IP/PORT Whitelisting
 WHITELIST_ENABLED=true
 WHITELIST_CONFIG_PATH=./config/whitelist.json
+
+# Auto-update Configuration
+AUTO_UPDATE_ENABLED=true
+AUTO_UPDATE_CHECK_INTERVAL=86400
+DISCORD_WEBHOOK_URL=
 EOL
   fi
   
@@ -408,6 +427,7 @@ alias noxhime-logs="cd $INSTALL_DIR && pm2 logs"
 alias noxhime-monitor="cd $INSTALL_DIR && npm run monitor"
 alias noxhime-status="systemctl status noxhime-bot"
 alias noxhime-restart="systemctl restart noxhime-bot"
+alias noxhime-update="cd $INSTALL_DIR && sudo bash ./scripts/auto-update.sh"
 EOL
     
     success "Aliases added to $aliases_file!"

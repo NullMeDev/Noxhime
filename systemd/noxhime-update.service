@@ -1,0 +1,14 @@
+[Unit]
+Description=Noxhime Bot Auto-Update Service
+After=network.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/nulladmin/noxhime-bot
+ExecStart=/home/nulladmin/noxhime-bot/scripts/auto-update.sh
+User=nulladmin
+# Load environment variables from .env file
+EnvironmentFile=/home/nulladmin/noxhime-bot/.env
+
+[Install]
+WantedBy=multi-user.target

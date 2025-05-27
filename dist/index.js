@@ -12,6 +12,7 @@ const fs_1 = __importDefault(require("fs"));
 const monitor_1 = require("./monitor");
 const sentinel_1 = require("./sentinel");
 const personality_1 = require("./personality");
+const whitelist_commands_1 = require("./whitelist-commands");
 // Use require for modules with export issues
 const api = require('./api');
 const dbModule = require('./db');
@@ -336,7 +337,8 @@ client.on('messageCreate', async (message) => {
                     `\`${COMMAND_PREFIX}logs <type> <count>\` – [OWNER ONLY] view recent logs`,
                     `\`${COMMAND_PREFIX}backup\` – [OWNER ONLY] trigger manual backup`,
                     `\`${COMMAND_PREFIX}sentinel <start|stop>\` – [OWNER ONLY] control sentinel system`,
-                    `\`${COMMAND_PREFIX}incidents\` – [OWNER ONLY] view security incidents`
+                    `\`${COMMAND_PREFIX}incidents\` – [OWNER ONLY] view security incidents`,
+                    `\`${COMMAND_PREFIX}whitelist <action>\` – [OWNER ONLY] manage IP/port whitelisting`
                 ];
                 // Use personality system if enabled
                 if (PERSONALITY_ENABLED) {
@@ -715,6 +717,10 @@ client.on('messageCreate', async (message) => {
                 else {
                     await message.reply("You don't have permission to use this command.");
                 }
+                break;
+            case 'whitelist':
+                // Handle whitelist commands through the dedicated handler
+                await (0, whitelist_commands_1.handleWhitelistCommands)(message, args);
                 break;
         }
     }

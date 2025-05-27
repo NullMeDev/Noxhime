@@ -18,6 +18,25 @@ echo "╚═╝  ╚═══╝ ╚═════╝ ╚═╝  ╚═╝╚�
 echo -e "${NC}"
 echo -e "${BOLD}Quick Setup Script${NC}"
 echo
+# Run compatibility check if the script exists locally
+if [ -f "./scripts/compatibility-check.sh" ]; then
+    echo "Running compatibility check..."
+    bash ./scripts/compatibility-check.sh
+    CHECK_RESULT=$?
+    
+    if [ $CHECK_RESULT -eq 1 ]; then
+        echo "Compatibility check failed. Please fix the issues before continuing."
+        exit 1
+    elif [ $CHECK_RESULT -eq 2 ]; then
+        echo "Compatibility warning detected. Installation may proceed but with potential issues."
+        read -p "Do you want to continue anyway? (y/n): " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            echo "Installation aborted."
+            exit 1
+        fi
+    fi
+fi
 
 # Check if git is installed
 if ! command -v git &> /dev/null; then
