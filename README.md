@@ -19,6 +19,32 @@ Autonomous Discord bot with system monitoring, security intelligence, and OpenAI
 
 ## Setup Instructions
 
+### Option 1: Automated Installation (Recommended)
+
+Run the following command to automatically download and install Noxhime Bot with all dependencies:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/NullMeDev/noxhime-bot/main/quick-setup.sh | bash
+```
+
+This will:
+- Clone the repository
+- Install all dependencies
+- Create the database
+- Guide you through configuration with interactive prompts
+- Set up system services and monitoring
+- Create shell aliases for easy management
+
+### Option 2: Using the Included Installer
+
+If you've already cloned the repository:
+
+```bash
+./noxhime-installer.sh
+```
+
+### Option 3: Manual Installation
+
 1. Clone this repository
 2. Install dependencies: `npm install`
 3. Copy `.env.example` to `.env` and fill in your credentials:
@@ -49,6 +75,17 @@ Autonomous Discord bot with system monitoring, security intelligence, and OpenAI
    pm2 save
    pm2 startup
    ```
+
+## Quick Commands
+
+After installation, the following aliases are available:
+
+- `noxhime-start`: Start the bot manually
+- `noxhime-monitor`: Launch the monitoring CLI
+- `noxhime-logs`: View the bot logs
+- `noxhime-status`: Check the bot's status
+- `noxhime-restart`: Restart the bot
+- `noxhime-config`: Edit the configuration file
 
 ## Commands
 
