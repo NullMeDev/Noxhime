@@ -168,5 +168,8 @@ A web dashboard is available at nullme.lol that provides:
 
 <p align="center">
 Contributions are welcome, either request here, or email me at null@nullme.dev! Please feel free to submit a Pull Request.
-Made With &#128156; by NullMeDev
+
+   Made With &#128156; by NullMeDev
+   Consider Donations:
+   https://ko-fi.com/NullMeDev
 </p>
