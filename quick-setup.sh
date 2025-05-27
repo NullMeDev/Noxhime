@@ -7,15 +7,18 @@ GREEN='\033[0;32m'
 CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color
+# Midnight Purple color for ASCII art
+MIDNIGHT_PURPLE='\033[38;5;92m'
 
-echo -e "${CYAN}"
+echo -e "${MIDNIGHT_PURPLE}"
 echo "███╗   ██╗ ██████╗ ██╗  ██╗██╗  ██╗██╗███╗   ███╗███████╗"
 echo "████╗  ██║██╔═══██╗╚██╗██╔╝██║  ██║██║████╗ ████║██╔════╝"
 echo "██╔██╗ ██║██║   ██║ ╚███╔╝ ███████║██║██╔████╔██║█████╗  "
 echo "██║╚██╗██║██║   ██║ ██╔██╗ ██╔══██║██║██║╚██╔╝██║██╔══╝  "
 echo "██║ ╚████║╚██████╔╝██╔╝ ██╗██║  ██║██║██║ ╚═╝ ██║███████╗"
 echo "╚═╝  ╚═══╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝╚═╝     ╚═╝╚══════╝"
-echo -e "${NC}"
+echo -e "${MIDNIGHT_PURPLE}                                      Made with 💜 by NullMeDev${NC}"
+echo
 echo -e "${BOLD}Quick Setup Script${NC}"
 echo
 # Run compatibility check if the script exists locally

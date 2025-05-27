@@ -459,9 +459,12 @@ start_bot() {
   fi
 }
 
+# Midnight Purple color for ASCII art
+MIDNIGHT_PURPLE='\033[38;5;92m'
+
 # Main script execution
 clear
-echo -e "${BOLD}${CYAN}"
+echo -e "${BOLD}${MIDNIGHT_PURPLE}"
 cat << "EOF"
  _   _            _     _                 ____        _   
 | \ | | _____  __| |__ (_)_ __ ___   ___ | __ )  ___ | |_ 
@@ -470,7 +473,8 @@ cat << "EOF"
 |_| \_|\___/_/\_\|_| |_|_|_| |_| |_|\___||____/ \___/ \__|
                                                            
 EOF
-echo -e "${NC}"
+echo -e "${MIDNIGHT_PURPLE}                                      Made with 💜 by NullMeDev${NC}"
+echo
 echo -e "${BOLD}Enhanced Installation Script with IP/Port Whitelisting${NC}"
 echo
 
@@ -489,12 +493,457 @@ echo "Bot User: $BOT_USER"
 echo
 read -p "Press Enter to continue or Ctrl+C to cancel..."
 
-# Install git hooks if this is a development installation
+# Install git hooks and version management tools
 install_dev_tools() {
   divider "Setting Up Development Tools"
   
   cd "$INSTALL_DIR" || error "Failed to navigate to installation directory"
   
+  # Create scripts directory if it doesn't exist
+  mkdir -p "$INSTALL_DIR/scripts"
+  
+  # Create required scripts if they don't exist
+  # First, let's check for the pre-commit hook
+  if [ ! -f "./scripts/pre-commit-hook" ]; then
+    status "Creating pre-commit hook script..."
+    cat > "./scripts/pre-commit-hook" << 'EOL'
+#!/bin/bash
+# Pre-commit hook to automatically increment the patch version number
+# Save this file as .git/hooks/pre-commit and make it executable
+
+# Get the project root
+PROJECT_ROOT=$(git rev-parse --show-toplevel)
+VERSION_MANAGER="$PROJECT_ROOT/scripts/version-manager.sh"
+
+# Check if version manager exists
+if [ -f "$VERSION_MANAGER" ]; then
+  echo "[+] Incrementing patch version for this commit..."
+  bash "$VERSION_MANAGER" --patch
+  
+  # Stage the VERSION file and package.json for commit
+  git add "$PROJECT_ROOT/VERSION" "$PROJECT_ROOT/package.json"
+fi
+
+exit 0
+EOL
+    chmod +x "./scripts/pre-commit-hook"
+  fi
+
+  # Check for the install-hooks script
+  if [ ! -f "./scripts/install-hooks.sh" ]; then
+    status "Creating install-hooks script..."
+    cat > "./scripts/install-hooks.sh" << 'EOL'
+#!/bin/bash
+# Script to install the pre-commit hook
+
+set -euo pipefail
+
+# Text colors and formatting
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+# Get the project root
+PROJECT_ROOT=$(dirname "$(dirname "$(readlink -f "$0")")")
+HOOKS_DIR="$PROJECT_ROOT/.git/hooks"
+PRE_COMMIT_HOOK="$HOOKS_DIR/pre-commit"
+HOOK_SOURCE="$PROJECT_ROOT/scripts/pre-commit-hook"
+
+# Check if .git directory exists
+if [ ! -d "$PROJECT_ROOT/.git" ]; then
+  echo -e "${RED}[✗]${NC} Not a git repository. Exiting."
+  exit 1
+fi
+
+# Check if source hook exists
+if [ ! -f "$HOOK_SOURCE" ]; then
+  echo -e "${RED}[✗]${NC} Pre-commit hook source not found at $HOOK_SOURCE"
+  exit 1
+fi
+
+# Create hooks directory if it doesn't exist
+if [ ! -d "$HOOKS_DIR" ]; then
+  mkdir -p "$HOOKS_DIR"
+fi
+
+# Check if hook already exists
+if [ -f "$PRE_COMMIT_HOOK" ]; then
+  echo -e "${RED}[!]${NC} Pre-commit hook already exists at $PRE_COMMIT_HOOK"
+  read -p "Do you want to overwrite it? (y/n): " -n 1 -r
+  echo
+  
+  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "Aborted."
+    exit 0
+  fi
+fi
+
+# Copy hook
+cp "$HOOK_SOURCE" "$PRE_COMMIT_HOOK"
+chmod +x "$PRE_COMMIT_HOOK"
+
+echo -e "${GREEN}[✓]${NC} Pre-commit hook installed successfully!"
+echo "The hook will automatically increment the patch version number on each commit."
+exit 0
+EOL
+    chmod +x "./scripts/install-hooks.sh"
+  fi
+
+  # Check for the version manager script
+  if [ ! -f "./scripts/version-manager.sh" ]; then
+    status "Creating version manager script..."
+    cat > "./scripts/version-manager.sh" << 'EOL'
+#!/bin/bash
+# Version Management Script for Noxhime Bot
+# This script handles version updates and ensures consistency between VERSION file and package.json
+
+set -euo pipefail
+
+# Text colors and formatting
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Find the project root
+PROJECT_ROOT=$(dirname "$(dirname "$(readlink -f "$0")")")
+VERSION_FILE="$PROJECT_ROOT/VERSION"
+PACKAGE_JSON="$PROJECT_ROOT/package.json"
+
+# Check if required files exist
+if [ ! -f "$VERSION_FILE" ]; then
+  echo -e "${YELLOW}[!]${NC} VERSION file not found. Creating with version 0.0.0"
+  echo "0.0.0" > "$VERSION_FILE"
+fi
+
+if [ ! -f "$PACKAGE_JSON" ]; then
+  echo -e "${RED}[✗]${NC} package.json not found!"
+  exit 1
+fi
+
+# Function to update versions in both files
+update_versions() {
+  local new_version="$1"
+  local update_type="$2"
+  
+  # Update VERSION file
+  echo "$new_version" > "$VERSION_FILE"
+  echo -e "${GREEN}[✓]${NC} Updated VERSION file to $new_version"
+  
+  # Update package.json
+  sed -i 's/"version": "[^"]*"/"version": "'"$new_version"'"/' "$PACKAGE_JSON"
+  echo -e "${GREEN}[✓]${NC} Updated package.json version to $new_version"
+  
+  # If we have the changelog update script, add a version entry
+  if [ -f "$PROJECT_ROOT/scripts/update-changelog.sh" ]; then
+    bash "$PROJECT_ROOT/scripts/update-changelog.sh" --version "$new_version" --add "Version $update_type update"
+  fi
+}
+
+# Function to get current version from VERSION file
+get_current_version() {
+  if [ -f "$VERSION_FILE" ]; then
+    cat "$VERSION_FILE"
+  else
+    echo "0.0.0"
+  fi
+}
+
+# Function to increment version
+increment_version() {
+  local version="$1"
+  local update_type="$2"
+  
+  # Split version into components
+  IFS='.' read -ra VERSION_PARTS <<< "$version"
+  local major="${VERSION_PARTS[0]}"
+  local minor="${VERSION_PARTS[1]}"
+  local patch="${VERSION_PARTS[2]}"
+  
+  # Increment based on update type
+  case "$update_type" in
+    major)
+      major=$((major + 1))
+      minor=0
+      patch=0
+      ;;
+    minor)
+      minor=$((minor + 1))
+      patch=0
+      ;;
+    patch)
+      patch=$((patch + 1))
+      ;;
+    *)
+      echo -e "${RED}[✗]${NC} Invalid update type: $update_type. Use 'major', 'minor', or 'patch'."
+      exit 1
+      ;;
+  esac
+  
+  echo "$major.$minor.$patch"
+}
+
+# Show usage info
+show_usage() {
+  echo -e "${YELLOW}Usage:${NC}"
+  echo -e "  $0 [options]"
+  echo
+  echo -e "${YELLOW}Options:${NC}"
+  echo -e "  -h, --help        Show this help message"
+  echo -e "  -c, --current     Show current version"
+  echo -e "  -s, --set VERSION Set specific version (e.g., 1.2.3)"
+  echo -e "  --major           Increment major version (X.0.0)"
+  echo -e "  --minor           Increment minor version (x.X.0)"
+  echo -e "  --patch           Increment patch version (x.x.X)"
+  echo
+  echo -e "${YELLOW}Examples:${NC}"
+  echo -e "  $0 --current"
+  echo -e "  $0 --set 2.0.0"
+  echo -e "  $0 --minor"
+}
+
+# Parse command-line arguments
+if [ $# -eq 0 ]; then
+  show_usage
+  exit 1
+fi
+
+while [[ $# -gt 0 ]]; do
+  key="$1"
+  case $key in
+    -h|--help)
+      show_usage
+      exit 0
+      ;;
+    -c|--current)
+      current_version=$(get_current_version)
+      echo -e "${BLUE}Current version:${NC} $current_version"
+      exit 0
+      ;;
+    -s|--set)
+      if [[ $# -lt 2 ]]; then
+        echo -e "${RED}[✗]${NC} Missing version argument for --set"
+        exit 1
+      fi
+      
+      new_version="$2"
+      # Validate version format
+      if [[ ! $new_version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        echo -e "${RED}[✗]${NC} Invalid version format. Use semantic versioning (e.g., 1.2.3)."
+        exit 1
+      fi
+      
+      update_versions "$new_version" "set"
+      shift
+      ;;
+    --major)
+      current_version=$(get_current_version)
+      new_version=$(increment_version "$current_version" "major")
+      update_versions "$new_version" "major"
+      ;;
+    --minor)
+      current_version=$(get_current_version)
+      new_version=$(increment_version "$current_version" "minor")
+      update_versions "$new_version" "minor"
+      ;;
+    --patch)
+      current_version=$(get_current_version)
+      new_version=$(increment_version "$current_version" "patch")
+      update_versions "$new_version" "patch"
+      ;;
+    *)
+      echo -e "${RED}[✗]${NC} Unknown option: $1"
+      show_usage
+      exit 1
+      ;;
+  esac
+  shift
+done
+
+exit 0
+EOL
+    chmod +x "./scripts/version-manager.sh"
+  fi
+
+  # Check for the update-changelog script
+  if [ ! -f "./scripts/update-changelog.sh" ]; then
+    status "Creating update-changelog script..."
+    cat > "./scripts/update-changelog.sh" << 'EOL'
+#!/bin/bash
+# update-changelog.sh - Script to update the changelog in README.md
+
+set -euo pipefail
+
+# Text colors and formatting
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Find the project root (where the README.md file is)
+PROJECT_ROOT=$(dirname "$(dirname "$(readlink -f "$0")")")
+README_FILE="$PROJECT_ROOT/README.md"
+
+# Check if README.md exists
+if [ ! -f "$README_FILE" ]; then
+  echo -e "${RED}Error: README.md not found at $README_FILE${NC}"
+  exit 1
+fi
+
+# Get the version from package.json
+VERSION=$(grep '"version"' "$PROJECT_ROOT/package.json" | head -1 | sed 's/.*"version": "\(.*\)",/\1/')
+DATE=$(date +%B\ %d,\ %Y)
+
+# Functions to show usage and help
+show_usage() {
+  echo -e "${YELLOW}Usage:${NC}"
+  echo -e "  $0 [options]"
+  echo
+  echo -e "${YELLOW}Options:${NC}"
+  echo -e "  -h, --help        Show this help message"
+  echo -e "  -v, --version     Override version (default: from package.json)"
+  echo -e "  -d, --date        Override date (default: today)"
+  echo -e "  -a, --add         Add a changelog entry"
+  echo -e "  -f, --fix         Fix a changelog entry"
+  echo -e "  -u, --update      Update a changelog entry"
+  echo
+  echo -e "${YELLOW}Examples:${NC}"
+  echo -e "  $0 --add \"Auto-update feature with Discord notifications\""
+  echo -e "  $0 --fix \"Installation issues with Node.js on Ubuntu 24.04\""
+  echo -e "  $0 --update \"Package versions for better compatibility\""
+}
+
+# Check if no arguments provided
+if [ $# -eq 0 ]; then
+  show_usage
+  exit 1
+fi
+
+# Parse arguments
+ENTRIES=()
+ENTRY_TYPE=""
+
+while [[ $# -gt 0 ]]; do
+  key="$1"
+  case $key in
+    -h|--help)
+      show_usage
+      exit 0
+      ;;
+    -v|--version)
+      VERSION="$2"
+      shift
+      shift
+      ;;
+    -d|--date)
+      DATE="$2"
+      shift
+      shift
+      ;;
+    -a|--add)
+      ENTRY_TYPE="Added"
+      ENTRIES+=("$2")
+      shift
+      shift
+      ;;
+    -f|--fix)
+      ENTRY_TYPE="Fixed"
+      ENTRIES+=("$2")
+      shift
+      shift
+      ;;
+    -u|--update)
+      ENTRY_TYPE="Updated"
+      ENTRIES+=("$2")
+      shift
+      shift
+      ;;
+    -i|--improve)
+      ENTRY_TYPE="Improved"
+      ENTRIES+=("$2")
+      shift
+      shift
+      ;;
+    -r|--remove)
+      ENTRY_TYPE="Removed"
+      ENTRIES+=("$2")
+      shift
+      shift
+      ;;
+    *)
+      echo -e "${RED}Unknown option: $1${NC}"
+      show_usage
+      exit 1
+      ;;
+  esac
+done
+
+if [ -z "$ENTRY_TYPE" ] || [ ${#ENTRIES[@]} -eq 0 ]; then
+  echo -e "${RED}Error: No entries provided.${NC}"
+  show_usage
+  exit 1
+fi
+
+# Check if the changelog section exists, if not create it
+if ! grep -q "## Changelog" "$README_FILE"; then
+  echo -e "${YELLOW}Changelog section not found. Creating it...${NC}"
+  cat >> "$README_FILE" << EOF
+
+## Changelog
+
+EOF
+fi
+
+# Check if the version already exists in the changelog
+if grep -q "### v$VERSION" "$README_FILE"; then
+  echo -e "${BLUE}Version v$VERSION already exists in the changelog. Adding entries to existing version...${NC}"
+  
+  # Get the line number of the version header
+  VERSION_LINE=$(grep -n "### v$VERSION" "$README_FILE" | cut -d: -f1)
+  
+  # Add entries to the existing version section
+  for entry in "${ENTRIES[@]}"; do
+    # Find the line after the version header to insert the new entry
+    INSERT_LINE=$((VERSION_LINE + 1))
+    
+    # Insert new entry
+    sed -i "${INSERT_LINE}i- **${ENTRY_TYPE}**: ${entry}" "$README_FILE"
+  done
+else
+  echo -e "${BLUE}Creating new version v$VERSION in the changelog...${NC}"
+  
+  # Get the line number after the "## Changelog" line
+  CHANGELOG_LINE=$(grep -n "## Changelog" "$README_FILE" | cut -d: -f1)
+  INSERT_LINE=$((CHANGELOG_LINE + 1))
+  
+  # Create new version header
+  sed -i "${INSERT_LINE}i\
+\
+### v$VERSION ($DATE)" "$README_FILE"
+  
+  # Add entries
+  INSERT_LINE=$((INSERT_LINE + 1))
+  for entry in "${ENTRIES[@]}"; do
+    sed -i "${INSERT_LINE}i- **${ENTRY_TYPE}**: ${entry}" "$README_FILE"
+    INSERT_LINE=$((INSERT_LINE + 1))
+  done
+fi
+
+echo -e "${GREEN}Changelog updated successfully!${NC}"
+exit 0
+EOL
+    chmod +x "./scripts/update-changelog.sh"
+  fi
+  
+  # Create VERSION file if it doesn't exist
+  if [ ! -f "./VERSION" ]; then
+    status "Creating VERSION file..."
+    echo "0.0.0" > "./VERSION"
+  fi
+
+  # Install the hooks if possible
   if [ -f "./scripts/install-hooks.sh" ]; then
     status "Installing Git hooks for version management..."
     bash ./scripts/install-hooks.sh
@@ -503,13 +952,13 @@ install_dev_tools() {
     if [ -f "./scripts/version-manager.sh" ]; then
       if [ ! -f "./VERSION" ] || [ "$(cat ./VERSION)" = "0.0.0" ]; then
         status "Initializing version number..."
-        bash ./scripts/version-manager.sh --set 1.0.0
+        bash ./scripts/version-manager.sh --set 2.0.0
       fi
     fi
     
     success "Development tools set up successfully!"
   else
-    warn "Development tools not found. Skipping."
+    error "Failed to create development tools."
   fi
 }
 

@@ -112,15 +112,57 @@ CHANGELOG=$(generate_changelog "$PREVIOUS_VERSION" "$LATEST_REMOTE_COMMIT")
 # Get the latest tag if available
 LATEST_VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "latest commit")
 
-# Update version number with a patch increment
-if [ -f "$PROJECT_ROOT/scripts/version-manager.sh" ]; then
-  echo "[+] Incrementing patch version number..."
-  bash "$PROJECT_ROOT/scripts/version-manager.sh" --patch
-  CURRENT_VERSION=$(cat "$PROJECT_ROOT/VERSION")
-  echo "[+] Current version is now: $CURRENT_VERSION"
-else
-  echo "[!] Version manager script not found, skipping version update"
+# Ensure version manager exists
+if [ ! -f "$PROJECT_ROOT/scripts/version-manager.sh" ]; then
+  echo "[+] Version manager script not found. Creating it..."
+  
+  # Create the version manager script (simplified for auto-update.sh)
+  mkdir -p "$PROJECT_ROOT/scripts"
+  
+  # Copy version manager from main repository or use a simplified version
+  curl -s "https://raw.githubusercontent.com/NullMeDev/noxhime-bot/main/scripts/version-manager.sh" -o "$PROJECT_ROOT/scripts/version-manager.sh" || {
+    echo "[!] Could not download version manager. Creating a minimal version..."
+    cat > "$PROJECT_ROOT/scripts/version-manager.sh" << 'EOL'
+#!/bin/bash
+# Simplified version manager for auto-update
+set -euo pipefail
+
+VERSION_FILE="$(dirname "$(dirname "$(readlink -f "$0")")")/VERSION"
+PACKAGE_JSON="$(dirname "$(dirname "$(readlink -f "$0")")")/package.json"
+
+# Create VERSION file if it doesn't exist
+if [ ! -f "$VERSION_FILE" ]; then
+  echo "1.0.0" > "$VERSION_FILE"
 fi
+
+# Function to increment patch version
+if [ "$1" == "--patch" ]; then
+  version=$(cat "$VERSION_FILE")
+  IFS='.' read -ra VERSION_PARTS <<< "$version"
+  major="${VERSION_PARTS[0]}"
+  minor="${VERSION_PARTS[1]}"
+  patch="${VERSION_PARTS[2]}"
+  patch=$((patch + 1))
+  new_version="$major.$minor.$patch"
+  echo "$new_version" > "$VERSION_FILE"
+  
+  # Update package.json if it exists
+  if [ -f "$PACKAGE_JSON" ]; then
+    sed -i 's/"version": "[^"]*"/"version": "'"$new_version"'"/' "$PACKAGE_JSON"
+  fi
+  
+  echo "[✓] Updated version to $new_version"
+fi
+EOL
+    chmod +x "$PROJECT_ROOT/scripts/version-manager.sh"
+  }
+fi
+
+# Update version number with a patch increment
+echo "[+] Incrementing patch version number..."
+bash "$PROJECT_ROOT/scripts/version-manager.sh" --patch
+CURRENT_VERSION=$(cat "$PROJECT_ROOT/VERSION" 2>/dev/null || echo "unknown")
+echo "[+] Current version is now: $CURRENT_VERSION"
 
 # Update README changelog if script exists and we have an actual version tag
 if [ -f "$PROJECT_ROOT/scripts/update-changelog.sh" ] && [ "$LATEST_VERSION" != "latest commit" ]; then
