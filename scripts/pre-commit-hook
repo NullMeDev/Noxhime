@@ -1,0 +1,18 @@
+#!/bin/bash
+# Pre-commit hook to automatically increment the patch version number
+# Save this file as .git/hooks/pre-commit and make it executable
+
+# Get the project root
+PROJECT_ROOT=$(git rev-parse --show-toplevel)
+VERSION_MANAGER="$PROJECT_ROOT/scripts/version-manager.sh"
+
+# Check if version manager exists
+if [ -f "$VERSION_MANAGER" ]; then
+  echo "[+] Incrementing patch version for this commit..."
+  bash "$VERSION_MANAGER" --patch
+  
+  # Stage the VERSION file and package.json for commit
+  git add "$PROJECT_ROOT/VERSION" "$PROJECT_ROOT/package.json"
+fi
+
+exit 0

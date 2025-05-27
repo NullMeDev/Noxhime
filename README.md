@@ -247,3 +247,26 @@ Consider donating at https://ko-fi.com/NullMeDev
 </p>
 <p align="center">
 Made With &#x1F49C by NullMeDev.</p>
+
+## Changelog
+
+### v2.0.0 (May 27, 2025)
+- **Added**: Version set update
+- **Added**: Auto-update feature that checks for updates from GitHub repository
+- **Added**: Discord notifications for update process (start, completion with changelog)
+- **Added**: Compatibility check script for detecting system issues
+- **Fixed**: Installation issues with Node.js on Ubuntu 24.04
+- **Fixed**: Package dependency issues (node-agent-base, node-gyp, node-emoji-regex)
+- **Updated**: Node.js installation to use Node.js 20.x LTS for Ubuntu 24.04 compatibility
+- **Updated**: Package versions in package.json for better compatibility
+- **Improved**: Installation script with better error handling and OS detection
+
+### v1.0.0 (Initial Release)
+- Discord integration with comprehensive command system
+- OpenAI-powered chat responses with personality core
+- BioLock security system for owner-only access
+- IP/Port Whitelisting for enhanced API security
+- SQLite database for event logging and data persistence
+- Self-healing capabilities with automatic recovery
+- Sentinel Intelligence with log monitoring and suspicious behavior detection
+- Automated backup system with remote storage

@@ -489,6 +489,30 @@ echo "Bot User: $BOT_USER"
 echo
 read -p "Press Enter to continue or Ctrl+C to cancel..."
 
+# Install git hooks if this is a development installation
+install_dev_tools() {
+  divider "Setting Up Development Tools"
+  
+  cd "$INSTALL_DIR" || error "Failed to navigate to installation directory"
+  
+  if [ -f "./scripts/install-hooks.sh" ]; then
+    status "Installing Git hooks for version management..."
+    bash ./scripts/install-hooks.sh
+    
+    # Initialize version if not already set
+    if [ -f "./scripts/version-manager.sh" ]; then
+      if [ ! -f "./VERSION" ] || [ "$(cat ./VERSION)" = "0.0.0" ]; then
+        status "Initializing version number..."
+        bash ./scripts/version-manager.sh --set 1.0.0
+      fi
+    fi
+    
+    success "Development tools set up successfully!"
+  else
+    warn "Development tools not found. Skipping."
+  fi
+}
+
 # Execute installation phases
 install_prerequisites
 clone_repo
@@ -498,6 +522,7 @@ setup_environment
 setup_whitelist
 setup_system_integration
 setup_aliases
+install_dev_tools
 start_bot
 
 divider "Installation Complete!"

@@ -112,6 +112,47 @@ CHANGELOG=$(generate_changelog "$PREVIOUS_VERSION" "$LATEST_REMOTE_COMMIT")
 # Get the latest tag if available
 LATEST_VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "latest commit")
 
+# Update version number with a patch increment
+if [ -f "$PROJECT_ROOT/scripts/version-manager.sh" ]; then
+  echo "[+] Incrementing patch version number..."
+  bash "$PROJECT_ROOT/scripts/version-manager.sh" --patch
+  CURRENT_VERSION=$(cat "$PROJECT_ROOT/VERSION")
+  echo "[+] Current version is now: $CURRENT_VERSION"
+else
+  echo "[!] Version manager script not found, skipping version update"
+fi
+
+# Update README changelog if script exists and we have an actual version tag
+if [ -f "$PROJECT_ROOT/scripts/update-changelog.sh" ] && [ "$LATEST_VERSION" != "latest commit" ]; then
+  echo "[+] Updating README changelog..."
+  
+  # Extract version number without 'v' prefix
+  VERSION_NUMBER=${LATEST_VERSION#v}
+  
+  # Parse commit messages to categorize changelog entries
+  ADDED_ENTRIES=$(git log --pretty=format:"%s" "$PREVIOUS_VERSION..$LATEST_REMOTE_COMMIT" | grep -i "add\|feature\|new" | sed 's/^Add: //i; s/^Added: //i; s/^Feature: //i; s/^New: //i')
+  FIXED_ENTRIES=$(git log --pretty=format:"%s" "$PREVIOUS_VERSION..$LATEST_REMOTE_COMMIT" | grep -i "fix\|bug\|issue" | sed 's/^Fix: //i; s/^Fixed: //i; s/^Bug: //i')
+  UPDATED_ENTRIES=$(git log --pretty=format:"%s" "$PREVIOUS_VERSION..$LATEST_REMOTE_COMMIT" | grep -i "update\|upgrade\|bump" | sed 's/^Update: //i; s/^Updated: //i; s/^Upgrade: //i')
+  IMPROVED_ENTRIES=$(git log --pretty=format:"%s" "$PREVIOUS_VERSION..$LATEST_REMOTE_COMMIT" | grep -i "improve\|enhance\|refactor" | sed 's/^Improve: //i; s/^Improved: //i; s/^Enhancement: //i')
+  
+  # Update changelog with categorized entries
+  for entry in $ADDED_ENTRIES; do
+    bash "$PROJECT_ROOT/scripts/update-changelog.sh" --version "$VERSION_NUMBER" --add "$entry" || echo "[!] Failed to add changelog entry"
+  done
+  
+  for entry in $FIXED_ENTRIES; do
+    bash "$PROJECT_ROOT/scripts/update-changelog.sh" --version "$VERSION_NUMBER" --fix "$entry" || echo "[!] Failed to add changelog entry"
+  done
+  
+  for entry in $UPDATED_ENTRIES; do
+    bash "$PROJECT_ROOT/scripts/update-changelog.sh" --version "$VERSION_NUMBER" --update "$entry" || echo "[!] Failed to add changelog entry"
+  done
+  
+  for entry in $IMPROVED_ENTRIES; do
+    bash "$PROJECT_ROOT/scripts/update-changelog.sh" --version "$VERSION_NUMBER" --improve "$entry" || echo "[!] Failed to add changelog entry"
+  done
+fi
+
 # Send completion notification with changelog
 send_discord_notification "Noxhime Update Complete ✅" "**Updated to version:** $LATEST_VERSION\n\n**Changelog:**\n$CHANGELOG" "65280"
 

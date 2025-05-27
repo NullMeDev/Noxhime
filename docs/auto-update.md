@@ -58,3 +58,32 @@ If you encounter issues with the auto-update feature:
    ```
    sudo -u nulladmin git -C /home/nulladmin/noxhime-bot pull
    ```
+
+## Changelog Management
+
+The auto-update feature automatically updates the README.md changelog when new updates are pulled from the repository. It extracts commit messages and categorizes them as:
+
+- **Added**: New features or functionality
+- **Fixed**: Bug fixes or issue resolutions
+- **Updated**: Version updates or dependency changes
+- **Improved**: Enhancements or optimizations
+
+### Manual Changelog Management
+
+You can also manually update the changelog using the provided script:
+
+```bash
+# Add a new feature to the changelog
+./scripts/update-changelog.sh --add "New feature description"
+
+# Add a bug fix to the changelog
+./scripts/update-changelog.sh --fix "Bug fix description"
+
+# Add an update to the changelog
+./scripts/update-changelog.sh --update "Update description"
+
+# Add an improvement to the changelog
+./scripts/update-changelog.sh --improve "Improvement description"
+```
+
+For more options, run `./scripts/update-changelog.sh --help`

@@ -38,6 +38,12 @@ if [ -f "./scripts/compatibility-check.sh" ]; then
     fi
 fi
 
+# Display version information if available
+if [ -f "./VERSION" ]; then
+    VERSION=$(cat "./VERSION")
+    echo -e "${BOLD}Installing Noxhime Bot version ${VERSION}${NC}"
+fi
+
 # Check if git is installed
 if ! command -v git &> /dev/null; then
     echo "Git is not installed. Installing git..."
