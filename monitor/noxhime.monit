@@ -1,1 +1,4 @@
-
+check process noxhime-bot with pidfile /home/nulladmin/noxhime-bot/noxhime.pid
+  start program = "/bin/systemctl start noxhime-bot"
+  stop program = "/bin/systemctl stop noxhime-bot"
+  if not exist for 2 cycles then exec "/usr/bin/curl -X POST http://localhost:5000/alert -H 'Content-Type: application/json' -d '{\"title\": \"Noxhime Bot Down\", \"body\": \"She vanished... rebooting.\"}'"
