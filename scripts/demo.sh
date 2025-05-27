@@ -20,7 +20,7 @@ section() {
 
 # Check bot is built and ready to run
 section "Pre-flight Check"
-cd /workspaces/noxhimetest
+cd /workspaces/noxhime
 
 echo -e "${YELLOW}Checking build status...${NC}"
 if [ ! -d "dist" ]; then

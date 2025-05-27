@@ -7,6 +7,10 @@ import { exec } from 'child_process';
 import { getSentinel } from './sentinel';
 import { getPersonalityCore } from './personality';
 import * as db from './db';
+import { loadWhitelistConfig, whitelistMiddleware } from './whitelist';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 /**
  * API module for web dashboard integration with nullme.lol
@@ -33,6 +37,18 @@ export class ApiServer {
   private setupMiddleware(): void {
     this.app.use(cors());
     this.app.use(express.json());
+    
+    // Load and apply whitelist configuration if enabled
+    const whitelistEnabled = process.env.WHITELIST_ENABLED === 'true';
+    
+    if (whitelistEnabled) {
+      const whitelistConfigPath = process.env.WHITELIST_CONFIG_PATH || './config/whitelist.json';
+      const whitelistConfig = loadWhitelistConfig(whitelistConfigPath);
+      
+      // Apply whitelist middleware before API key authentication
+      this.app.use(whitelistMiddleware(whitelistConfig));
+      console.log('IP/Port whitelist protection enabled');
+    }
     
     // API key authentication middleware
     this.app.use('/api', (req: Request, res: Response, next: NextFunction): void => {

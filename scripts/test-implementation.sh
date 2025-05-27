@@ -24,7 +24,7 @@ echo -e "${GREEN}Node.js found: $(node --version)${NC}"
 
 # Check for project files
 echo -e "${BLUE}Checking project structure...${NC}"
-if [ ! -d "/workspaces/noxhimetest/src" ] || [ ! -f "/workspaces/noxhimetest/package.json" ]; then
+if [ ! -d "/workspaces/noxhime/src" ] || [ ! -f "/workspaces/noxhime/package.json" ]; then
     echo -e "${RED}Project structure is incorrect. Missing essential files.${NC}"
     exit 1
 fi
@@ -32,7 +32,7 @@ echo -e "${GREEN}Project structure looks good!${NC}"
 
 # Build the project
 echo -e "${BLUE}Building the project...${NC}"
-cd /workspaces/noxhimetest && npm run build
+cd /workspaces/noxhime && npm run build
 if [ $? -ne 0 ]; then
     echo -e "${RED}Build failed!${NC}"
     exit 1
@@ -41,10 +41,10 @@ echo -e "${GREEN}Build completed successfully!${NC}"
 
 # Set up mock data for testing
 echo -e "${BLUE}Setting up mock data for testing...${NC}"
-mkdir -p /workspaces/noxhimetest/data/mock
-echo "May 27 10:15:32 host sshd[1234]: Failed password for invalid user admin from 192.168.1.100 port 12345 ssh2" > /workspaces/noxhimetest/data/mock/auth.log
-echo "May 27 10:15:35 host fail2ban.actions: Ban 192.168.1.100" > /workspaces/noxhimetest/data/mock/fail2ban.log
-touch /workspaces/noxhimetest/data/mock/syslog /workspaces/noxhimetest/data/mock/nginx-error.log
+mkdir -p /workspaces/noxhime/data/mock
+echo "May 27 10:15:32 host sshd[1234]: Failed password for invalid user admin from 192.168.1.100 port 12345 ssh2" > /workspaces/noxhime/data/mock/auth.log
+echo "May 27 10:15:35 host fail2ban.actions: Ban 192.168.1.100" > /workspaces/noxhime/data/mock/fail2ban.log
+touch /workspaces/noxhime/data/mock/syslog /workspaces/noxhime/data/mock/nginx-error.log
 echo -e "${GREEN}Mock data created successfully!${NC}"
 
 # Test initialization of the database

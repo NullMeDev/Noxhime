@@ -1,4 +1,4 @@
-// filepath: /workspaces/noxhimetest/src/db.ts
+// filepath: /workspaces/noxhime/src/db.ts
 import sqlite3 from 'sqlite3';
 import path from 'path';
 import fs from 'fs';

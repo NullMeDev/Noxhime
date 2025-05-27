@@ -14,6 +14,7 @@ import {
 } from './monitor';
 import { getSentinel } from './sentinel';
 import { getPersonalityCore, EventType } from './personality';
+import { handleWhitelistCommands } from './whitelist-commands';
 
 // Use require for modules with export issues
 const api = require('./api');
@@ -391,7 +392,8 @@ client.on('messageCreate', async (message) => {
           `\`${COMMAND_PREFIX}logs <type> <count>\` – [OWNER ONLY] view recent logs`,
           `\`${COMMAND_PREFIX}backup\` – [OWNER ONLY] trigger manual backup`,
           `\`${COMMAND_PREFIX}sentinel <start|stop>\` – [OWNER ONLY] control sentinel system`,
-          `\`${COMMAND_PREFIX}incidents\` – [OWNER ONLY] view security incidents`
+          `\`${COMMAND_PREFIX}incidents\` – [OWNER ONLY] view security incidents`,
+          `\`${COMMAND_PREFIX}whitelist <action>\` – [OWNER ONLY] manage IP/port whitelisting`
         ];
         
         // Use personality system if enabled
@@ -841,6 +843,11 @@ client.on('messageCreate', async (message) => {
         } else {
           await message.reply("You don't have permission to use this command.");
         }
+        break;
+        
+      case 'whitelist':
+        // Handle whitelist commands through the dedicated handler
+        await handleWhitelistCommands(message, args);
         break;
     }
   }

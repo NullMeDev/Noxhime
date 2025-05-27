@@ -1,12 +1,16 @@
 # Noxhime Bot
 
-Autonomous Discord bot with system monitoring, security intelligence, and OpenAI integration with evolving personality.
+Autonomous Discord bot with system monitoring, security intelligence, IP/Port whitelisting, and OpenAI integration with evolving personality.
 
 ## Features
 
 - Discord integration with command system
 - OpenAI-powered chat responses
 - BioLock security system for owner-only access
+- **IP/Port Whitelisting** for enhanced API security
+  - Restrict API access to specific IP addresses and ports
+  - Manage whitelist via Discord commands
+  - Configurable through installation or bot commands
 - SQLite database for event logging
 - Notification system for bot status changes
 - Server health monitoring with Monit integration
@@ -19,12 +23,12 @@ Autonomous Discord bot with system monitoring, security intelligence, and OpenAI
 
 ## Setup Instructions
 
-### Option 1: Automated Installation (Recommended)
+### Option 1: Enhanced Installer (Recommended)
 
-Run the following command to automatically download and install Noxhime Bot with all dependencies:
+Use our enhanced installer script for a complete setup with IP/Port whitelisting:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/NullMeDev/noxhime-bot/main/quick-setup.sh | bash
+./install-noxhime.sh
 ```
 
 This will:
@@ -32,12 +36,24 @@ This will:
 - Install all dependencies
 - Create the database
 - Guide you through configuration with interactive prompts
+- Configure IP/Port whitelisting for enhanced security
+  - Add specific IP addresses to whitelist
+  - Add specific ports to whitelist
+  - Enable/disable whitelisting as needed
 - Set up system services and monitoring
 - Create shell aliases for easy management
 
-### Option 2: Using the Included Installer
+### Option 2: Quick Setup
 
-If you've already cloned the repository:
+Run the following command to automatically download and install Noxhime Bot with all dependencies:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/NullMeDev/noxhime-bot/main/quick-setup.sh | bash
+```
+
+### Option 3: Legacy Installer
+
+If you prefer the original installer without whitelist configuration:
 
 ```bash
 ./noxhime-installer.sh
@@ -87,7 +103,29 @@ After installation, the following aliases are available:
 - `noxhime-restart`: Restart the bot
 - `noxhime-config`: Edit the configuration file
 
+## IP/Port Whitelisting
+
+Noxhime Bot includes an advanced IP/Port whitelisting system for enhanced security. This prevents unauthorized access to the bot's API endpoints by restricting access to specific IP addresses and ports.
+
+For detailed documentation on the whitelist feature, see [docs/whitelist.md](docs/whitelist.md).
+
 ## Commands
+
+Noxhime Bot provides a comprehensive set of commands for both Discord interaction and server management. 
+
+See the complete [Command Reference](docs/commands.md) for a detailed list of:
+- Discord commands for general users
+- Owner-only Discord commands
+- Server-side management commands
+- Whitelist management commands
+- API endpoints
+
+Here are some of the most commonly used commands:
+
+- `!status` - Check if the bot is online
+- `!ask <question>` - Ask the bot a question using AI
+- `!system` - Display system status and statistics
+- `!whitelist status` - Show current whitelist configuration
 
 ### General Commands
 - `!status` - Check if bot is online
