@@ -1,9 +1,16 @@
-import { Client, GatewayIntentBits, ChannelType, TextChannel } from 'discord.js';
+import { Client, GatewayIntentBits, ChannelType, TextChannel, EmbedBuilder } from 'discord.js';
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
 import sqlite3 from 'sqlite3';
 import path from 'path';
 import fs from 'fs';
+import { 
+  setupMonitoringServer, 
+  collectSystemStats, 
+  savePidFile, 
+  setupSelfHealing,
+  setupCrashHandling
+} from './monitor';
 
 dotenv.config();
 
@@ -93,6 +100,11 @@ const BIOLOCK_ENABLED = process.env.BIOLOCK_ENABLED === 'true';
 const BIOLOCK_PASSPHRASE = process.env.BIOLOCK_PASSPHRASE;
 const BIOLOCK_OVERRIDE_KEY = process.env.BIOLOCK_OVERRIDE_KEY;
 const COMMAND_PREFIX = process.env.COMMAND_PREFIX || '!';
+const MONIT_ENABLED = process.env.MONIT_ENABLED === 'true';
+const MONIT_PORT = parseInt(process.env.MONIT_PORT || '5000');
+const PID_FILE_PATH = process.env.PID_FILE_PATH || '/home/nulladmin/noxhime-bot/noxhime.pid';
+const SELF_HEALING_ENABLED = process.env.SELF_HEALING_ENABLED === 'true';
+const SYSTEM_STATS_INTERVAL = parseInt(process.env.SYSTEM_STATS_INTERVAL || '3600000'); // Default: 1 hour
 
 let bioLocked = BIOLOCK_ENABLED; // Bot starts in locked state if BIOLOCK is enabled
 
@@ -133,18 +145,80 @@ client.once('ready', async () => {
   try {
     await initializeDatabase();
     console.log('Database initialized successfully');
-    
-    // Basic API server with express could be added here in the future
-    // Currently not implemented due to TypeScript configuration issues
   } catch (error) {
     console.error('Database initialization error:', error);
   }
+  
+  // Write PID file for Monit monitoring
+  savePidFile(PID_FILE_PATH);
+  
+  // Set up monitoring server if enabled
+  if (MONIT_ENABLED) {
+    setupMonitoringServer(client, NOTIFY_CHANNEL_ID, logEvent, MONIT_PORT);
+    console.log(`Monitoring server started on port ${MONIT_PORT}`);
+    await logEvent('SYSTEM', `Monitoring server started on port ${MONIT_PORT}`);
+  }
+  
+  // Set up crash handling and recovery
+  if (SELF_HEALING_ENABLED) {
+    setupCrashHandling(client, NOTIFY_CHANNEL_ID, logEvent);
+    console.log('Self-healing and crash handling enabled');
+    
+    // Setup periodic self-healing
+    const selfHeal = setupSelfHealing(logEvent);
+    setInterval(async () => {
+      await selfHeal();
+    }, 24 * 60 * 60 * 1000); // Run self-healing once a day
+  }
+  
+  // Set up periodic system stats collection
+  if (NOTIFY_CHANNEL_ID && SYSTEM_STATS_INTERVAL > 0) {
+    console.log(`System stats reporting configured for every ${SYSTEM_STATS_INTERVAL/60000} minutes`);
+    
+    setInterval(async () => {
+      try {
+        const stats = await collectSystemStats();
+        await logEvent('SYSTEM_STATS', JSON.stringify(stats));
+        
+        // Log to console but don't send to Discord to avoid spam
+        console.log('System stats collected:', stats);
+      } catch (error) {
+        console.error('Error collecting system stats:', error);
+      }
+    }, SYSTEM_STATS_INTERVAL);
+  }
 
+  // Send startup notification
   if (NOTIFY_CHANNEL_ID) {
     try {
       const auditChannel = await client.channels.fetch(NOTIFY_CHANNEL_ID);
       if (auditChannel?.isTextBased()) {
-        await (auditChannel as TextChannel).send('Onii-chan, I\'m back up now!');
+        const textChannel = auditChannel as TextChannel;
+        await textChannel.send('Onii-chan, I\'m back up now!');
+        
+        // Create a recovery message if we can find evidence of a crash
+        try {
+          const lastEvent = await dbGet(
+            'SELECT * FROM events WHERE type IN ("CRITICAL_ERROR", "SYSTEM_ALERT") ORDER BY timestamp DESC LIMIT 1'
+          );
+          
+          if (lastEvent && (Date.now() - new Date(lastEvent.timestamp).getTime()) < 300000) { // Within 5 minutes
+            await textChannel.send({
+              content: '**Recovery Report**',
+              embeds: [
+                new EmbedBuilder()
+                  .setTitle('System Recovery')
+                  .setDescription(`I've recovered from an issue: ${lastEvent.description}`)
+                  .setColor(0x00FF00)
+                  .setTimestamp()
+                  .setFooter({ text: 'Server Monitoring System' })
+              ]
+            });
+          }
+        } catch (recoveryError) {
+          console.error('Error creating recovery message:', recoveryError);
+        }
+        
         await logEvent('STARTUP', 'Bot successfully started and connected to Discord');
       } else {
         console.log('Channel is not text-based');
@@ -156,7 +230,7 @@ client.once('ready', async () => {
     console.log('No notify channel ID configured');
   }
 
-  console.log('Bot initialization complete');
+  console.log('Bot initialization complete with monitoring features');
 });
 
 client.on('messageCreate', async (message) => {
@@ -213,11 +287,14 @@ client.on('messageCreate', async (message) => {
           `\`${COMMAND_PREFIX}status\` – check if the bot is online`,
           `\`${COMMAND_PREFIX}whoami\` – discover your role`,
           `\`${COMMAND_PREFIX}cmds\` – list available commands`,
-          `\`${COMMAND_PREFIX}ask <question>\` – ask me a question using AI`
+          `\`${COMMAND_PREFIX}ask <question>\` – ask me a question using AI`,
+          `\`${COMMAND_PREFIX}system\` – display system status and stats`
         ];
         const ownerOnly = [
           `\`${COMMAND_PREFIX}restart\` – [OWNER ONLY] restart the bot`,
-          `\`${COMMAND_PREFIX}lock\` – [OWNER ONLY] engage BioLock`
+          `\`${COMMAND_PREFIX}lock\` – [OWNER ONLY] engage BioLock`,
+          `\`${COMMAND_PREFIX}heal\` – [OWNER ONLY] trigger self-healing routine`,
+          `\`${COMMAND_PREFIX}logs <type> <count>\` – [OWNER ONLY] view recent logs`
         ];
 
         await message.channel.send({
@@ -267,6 +344,97 @@ client.on('messageCreate', async (message) => {
           await message.reply("You don't have permission to use this command.");
         }
         break;
+        
+      case 'system':
+        try {
+          const stats = await collectSystemStats();
+          
+          const embed = new EmbedBuilder()
+            .setTitle('System Status')
+            .setDescription('Current system health and statistics')
+            .setColor(0x3498DB)
+            .addFields(
+              { name: 'CPU Usage', value: `${stats.cpuUsage.toFixed(1)}%`, inline: true },
+              { name: 'Memory Usage', value: `${stats.memoryUsage.toFixed(1)}%`, inline: true },
+              { name: 'Disk Usage', value: `${stats.diskUsage.toFixed(1)}%`, inline: true },
+              { name: 'Uptime', value: stats.uptime, inline: true },
+              { name: 'Bot Status', value: '🟢 Online', inline: true },
+              { name: 'Monitoring', value: MONIT_ENABLED ? '✅ Active' : '❌ Disabled', inline: true }
+            )
+            .setTimestamp()
+            .setFooter({ text: 'Noxhime Monitoring System' });
+
+          await message.channel.send({ embeds: [embed] });
+          await logEvent('COMMAND', `User ${message.author.username} requested system status`);
+        } catch (error) {
+          console.error('Error fetching system stats:', error);
+          await message.reply('Error fetching system statistics. Please try again later.');
+        }
+        break;
+        
+      case 'heal':
+        if (message.author.id === OWNER_ID) {
+          if (SELF_HEALING_ENABLED) {
+            await message.channel.send('🔄 Initiating self-healing routine...');
+            const selfHeal = setupSelfHealing(logEvent);
+            await selfHeal();
+            await message.channel.send('✅ Self-healing complete. Memory optimized and systems checked.');
+            await logEvent('MAINTENANCE', 'Manual self-healing triggered by owner');
+          } else {
+            await message.reply('Self-healing is not enabled in the configuration.');
+          }
+        } else {
+          await message.reply("You don't have permission to use this command.");
+        }
+        break;
+        
+      case 'logs':
+        if (message.author.id === OWNER_ID) {
+          const logType = args[0] || 'all';
+          const count = parseInt(args[1] || '5');
+          
+          let query = 'SELECT * FROM events';
+          const params: any[] = [];
+          
+          if (logType !== 'all') {
+            query += ' WHERE type = ?';
+            params.push(logType.toUpperCase());
+          }
+          
+          query += ' ORDER BY timestamp DESC LIMIT ?';
+          params.push(count);
+          
+          try {
+            const logs = await dbAll(query, params);
+            
+            if (logs.length === 0) {
+              await message.channel.send(`No logs found for type: ${logType}`);
+              return;
+            }
+            
+            const embed = new EmbedBuilder()
+              .setTitle(`Recent Logs: ${logType.toUpperCase()}`)
+              .setColor(0x9B59B6)
+              .setDescription(`Last ${logs.length} log entries`);
+              
+            logs.forEach(log => {
+              const time = new Date(log.timestamp).toLocaleString();
+              embed.addFields({
+                name: `[${log.type}] at ${time}`,
+                value: log.description || 'No details provided'
+              });
+            });
+            
+            await message.channel.send({ embeds: [embed] });
+            await logEvent('COMMAND', `User ${message.author.username} viewed logs of type ${logType}`);
+          } catch (error) {
+            console.error('Error fetching logs:', error);
+            await message.reply('Error retrieving logs. Please try again later.');
+          }
+        } else {
+          await message.reply("You don't have permission to use this command.");
+        }
+        break;
     }
   }
   
@@ -284,4 +452,42 @@ client.on('messageCreate', async (message) => {
   }
 });
 
+// Set up graceful shutdown
+async function gracefulShutdown(reason: string) {
+  console.log(`Initiating graceful shutdown: ${reason}`);
+  
+  try {
+    // Log shutdown event
+    await logEvent('SHUTDOWN', `Bot shutting down: ${reason}`);
+    
+    // Send shutdown notification
+    if (client.isReady() && NOTIFY_CHANNEL_ID) {
+      const channel = await client.channels.fetch(NOTIFY_CHANNEL_ID);
+      if (channel?.isTextBased()) {
+        await (channel as TextChannel).send(`🛑 Shutting down: ${reason}`);
+      }
+    }
+    
+    // Close database connection
+    db.close((err) => {
+      if (err) {
+        console.error('Error closing database:', err);
+      } else {
+        console.log('Database connection closed');
+      }
+      
+      // Exit gracefully
+      process.exit(0);
+    });
+  } catch (error) {
+    console.error('Error during graceful shutdown:', error);
+    process.exit(1);
+  }
+}
+
+// Listen for termination signals
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM signal received'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT signal received'));
+
+// Start the bot
 client.login(process.env.DISCORD_TOKEN);

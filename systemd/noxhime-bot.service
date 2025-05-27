@@ -1,14 +1,23 @@
 [Unit]
 Description=Noxhime Discord Bot
 After=network.target
+Wants=monit.service
 
 [Service]
 WorkingDirectory=/home/nulladmin/noxhime-bot
-ExecStart=/usr/bin/npm run start
-Restart=always
+ExecStart=/usr/bin/pm2 start npm --name "noxhime-bot" -- start
+ExecStop=/usr/bin/pm2 stop noxhime-bot
+ExecReload=/usr/bin/pm2 reload noxhime-bot
+Restart=on-failure
+RestartSec=10
 Environment=NODE_ENV=production
 EnvironmentFile=/home/nulladmin/noxhime-bot/.env
 User=nulladmin
+TimeoutStartSec=60
+TimeoutStopSec=30
+
+# Send notification on boot
+ExecStartPost=/bin/sh -c 'curl -s -X POST "http://localhost:5000/service-status" -H "Content-Type: application/json" -d "{\\"service\\": \\"noxhime-bot\\", \\"status\\": \\"up\\", \\"message\\": \\"Service started via systemd\\"}" || true'
 
 [Install]
 WantedBy=multi-user.target

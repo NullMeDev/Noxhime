@@ -1,4 +1,27 @@
+# Noxhime Bot Process Monitoring
 check process noxhime-bot with pidfile /home/nulladmin/noxhime-bot/noxhime.pid
   start program = "/bin/systemctl start noxhime-bot"
   stop program = "/bin/systemctl stop noxhime-bot"
-  if not exist for 2 cycles then exec "/usr/bin/curl -X POST http://localhost:5000/alert -H 'Content-Type: application/json' -d '{\"title\": \"Noxhime Bot Down\", \"body\": \"She vanished... rebooting.\"}'"
+  # Alert when the process is down
+  if not exist for 2 cycles then exec "/usr/bin/curl -X POST http://localhost:5000/alert -H 'Content-Type: application/json' -d '{\"title\": \"Noxhime Bot Down\", \"body\": \"She vanished... rebooting.\", \"severity\": \"critical\"}'"
+  # Restart if the process uses more than 95% CPU for 5 cycles
+  if cpu usage > 95% for 5 cycles then exec "/usr/bin/curl -X POST http://localhost:5000/alert -H 'Content-Type: application/json' -d '{\"title\": \"High CPU Usage\", \"body\": \"Noxhime is running hot! CPU usage exceeded 95%.\", \"severity\": \"warning\"}'"
+  # Restart if memory usage exceeds 90%
+  if memory usage > 90% for 5 cycles then restart
+  # Run self-healing if the process has been up for more than 3 days
+  if uptime > 3 days then exec "/usr/bin/curl -X POST http://localhost:5000/alert -H 'Content-Type: application/json' -d '{\"title\": \"Memory Optimization\", \"body\": \"Scheduled memory optimization running after 3 days uptime.\", \"severity\": \"info\"}'"
+  
+# System Resource Monitoring
+check system noxhime-host
+  if loadavg (5min) > 3 then exec "/usr/bin/curl -X POST http://localhost:5000/alert -H 'Content-Type: application/json' -d '{\"title\": \"High System Load\", \"body\": \"System load average is high (>3) for 5 minutes.\", \"severity\": \"warning\"}'"
+  if memory usage > 85% for 5 cycles then exec "/usr/bin/curl -X POST http://localhost:5000/alert -H 'Content-Type: application/json' -d '{\"title\": \"Low Memory\", \"body\": \"System memory usage exceeded 85%.\", \"severity\": \"warning\"}'"
+  if swap usage > 75% for 5 cycles then exec "/usr/bin/curl -X POST http://localhost:5000/alert -H 'Content-Type: application/json' -d '{\"title\": \"High Swap Usage\", \"body\": \"System swap usage exceeded 75%.\", \"severity\": \"warning\"}'"
+
+# Disk Space Monitoring
+check filesystem bot-disk with path /
+  if space usage > 80% then exec "/usr/bin/curl -X POST http://localhost:5000/alert -H 'Content-Type: application/json' -d '{\"title\": \"Low Disk Space\", \"body\": \"Disk space usage exceeded 80%.\", \"severity\": \"warning\"}'"
+  if space usage > 95% then exec "/usr/bin/curl -X POST http://localhost:5000/alert -H 'Content-Type: application/json' -d '{\"title\": \"Critical Disk Space\", \"body\": \"Disk space usage exceeded 95%! Cleanup needed urgently.\", \"severity\": \"critical\"}'"
+
+# Network Monitoring
+check host bot-network-check with address discord.com
+  if failed port 443 protocol https for 3 cycles then exec "/usr/bin/curl -X POST http://localhost:5000/alert -H 'Content-Type: application/json' -d '{\"title\": \"Network Connectivity Issue\", \"body\": \"Cannot reach Discord servers! Network connectivity check failed.\", \"severity\": \"critical\"}'"
