@@ -1,4 +1,3 @@
-// filepath: /workspaces/noxhimetest/src/db.ts
 import sqlite3 from 'sqlite3';
 import path from 'path';
 import fs from 'fs';
@@ -18,8 +17,8 @@ if (!fs.existsSync(dataDir)) {
 // Initialize database
 const db = new sqlite3.Database(DB_PATH);
 
-// Create module exports object
-const dbModule: any = {};
+// Create a module exports object
+const dbModule = {};
 
 // Database helper functions
 dbModule.run = (sql: string, params: any[] = []): Promise<any> => {
@@ -50,7 +49,7 @@ dbModule.all = (sql: string, params: any[] = []): Promise<any[]> => {
 };
 
 // Initialize database tables
-dbModule.initializeDatabase = async (): Promise<boolean> => {
+export async function initializeDatabase(): Promise<boolean> {
   try {
     // Read schema SQL
     const schemaSQL = fs.readFileSync(path.join(process.cwd(), 'db', 'schema.sql'), 'utf8');
@@ -59,7 +58,7 @@ dbModule.initializeDatabase = async (): Promise<boolean> => {
     const statements = schemaSQL.split(';').filter(stmt => stmt.trim());
     for (const stmt of statements) {
       if (stmt.trim()) {
-        await dbModule.run(stmt);
+        await run(stmt);
       }
     }
     
@@ -69,84 +68,84 @@ dbModule.initializeDatabase = async (): Promise<boolean> => {
     console.error('Error initializing database:', error);
     return false;
   }
-};
+}
 
 // Log an event
-dbModule.logEvent = async (type: string, description: string): Promise<boolean> => {
+export async function logEvent(type: string, description: string): Promise<boolean> {
   try {
-    await dbModule.run('INSERT INTO events (type, description) VALUES (?, ?)', [type, description]);
+    await run('INSERT INTO events (type, description) VALUES (?, ?)', [type, description]);
     return true;
   } catch (error) {
     console.error('Error logging event:', error);
     return false;
   }
-};
+}
 
 // Log an alert
-dbModule.logAlert = async (severity: string, message: string): Promise<boolean> => {
+export async function logAlert(severity: string, message: string): Promise<boolean> {
   try {
-    await dbModule.run('INSERT INTO alerts (severity, message) VALUES (?, ?)', [severity, message]);
+    await run('INSERT INTO alerts (severity, message) VALUES (?, ?)', [severity, message]);
     return true;
   } catch (error) {
     console.error('Error logging alert:', error);
     return false;
   }
-};
+}
 
 // Log an intrusion attempt
-dbModule.logIntrusion = async (ip: string, method: string): Promise<boolean> => {
+export async function logIntrusion(ip: string, method: string): Promise<boolean> {
   try {
-    await dbModule.run('INSERT INTO intrusions (ip, method) VALUES (?, ?)', [ip, method]);
+    await run('INSERT INTO intrusions (ip, method) VALUES (?, ?)', [ip, method]);
     return true;
   } catch (error) {
     console.error('Error logging intrusion:', error);
     return false;
   }
-};
+}
 
 // Log an authentication attempt
-dbModule.logAuthAttempt = async (username: string, sourceIp: string, success: boolean): Promise<boolean> => {
+export async function logAuthAttempt(username: string, sourceIp: string, success: boolean): Promise<boolean> {
   try {
-    await dbModule.run('INSERT INTO auth_attempts (username, source_ip, success) VALUES (?, ?, ?)', 
+    await run('INSERT INTO auth_attempts (username, source_ip, success) VALUES (?, ?, ?)', 
       [username, sourceIp, success ? 1 : 0]);
     return true;
   } catch (error) {
     console.error('Error logging auth attempt:', error);
     return false;
   }
-};
+}
 
 // Get recent events
-dbModule.getRecentEvents = async (limit = 10): Promise<any[]> => {
+export async function getRecentEvents(limit = 10): Promise<any[]> {
   try {
-    return await dbModule.all('SELECT * FROM events ORDER BY timestamp DESC LIMIT ?', [limit]);
+    return await all('SELECT * FROM events ORDER BY timestamp DESC LIMIT ?', [limit]);
   } catch (error) {
     console.error('Error getting recent events:', error);
     return [];
   }
-};
+}
 
 // Get recent alerts
-dbModule.getRecentAlerts = async (limit = 10): Promise<any[]> => {
+export async function getRecentAlerts(limit = 10): Promise<any[]> {
   try {
-    return await dbModule.all('SELECT * FROM alerts ORDER BY created_at DESC LIMIT ?', [limit]);
+    return await all('SELECT * FROM alerts ORDER BY created_at DESC LIMIT ?', [limit]);
   } catch (error) {
     console.error('Error getting recent alerts:', error);
     return [];
   }
-};
+}
 
 // Phase 4: Sentinel Intelligence Database Functions
 
 // Log a sentinel incident
-dbModule.logSentinelIncident = async (
+export async function logSentinelIncident(
   severity: string, 
   source: string, 
   description: string, 
   details?: string
-): Promise<boolean> => {
+): Promise<boolean> {
   try {
-    await dbModule.run(
+    await run(
       'INSERT INTO sentinel_incidents (severity, source, description, details) VALUES (?, ?, ?, ?)',
       [severity, source, description, details || '']
     );
@@ -155,33 +154,33 @@ dbModule.logSentinelIncident = async (
     console.error('Error logging sentinel incident:', error);
     return false;
   }
-};
+}
 
 // Get recent sentinel incidents
-dbModule.getRecentIncidents = async (limit = 10): Promise<any[]> => {
+export async function getRecentIncidents(limit = 10): Promise<any[]> {
   try {
-    return await dbModule.all('SELECT * FROM sentinel_incidents ORDER BY created_at DESC LIMIT ?', [limit]);
+    return await all('SELECT * FROM sentinel_incidents ORDER BY created_at DESC LIMIT ?', [limit]);
   } catch (error) {
     console.error('Error getting recent incidents:', error);
     return [];
   }
-};
+}
 
 // Track suspicious IP
-dbModule.trackSuspiciousIP = async (ip: string): Promise<boolean> => {
+export async function trackSuspiciousIP(ip: string): Promise<boolean> {
   try {
     // Check if IP exists
-    const existingIP = await dbModule.get('SELECT * FROM suspicious_ips WHERE ip = ?', [ip]);
+    const existingIP = await get('SELECT * FROM suspicious_ips WHERE ip = ?', [ip]);
     
     if (existingIP) {
       // Update existing IP
-      await dbModule.run(
+      await run(
         'UPDATE suspicious_ips SET incident_count = incident_count + 1, last_seen = CURRENT_TIMESTAMP WHERE ip = ?',
         [ip]
       );
     } else {
       // Insert new IP
-      await dbModule.run('INSERT INTO suspicious_ips (ip) VALUES (?)', [ip]);
+      await run('INSERT INTO suspicious_ips (ip) VALUES (?)', [ip]);
     }
     
     return true;
@@ -189,18 +188,18 @@ dbModule.trackSuspiciousIP = async (ip: string): Promise<boolean> => {
     console.error('Error tracking suspicious IP:', error);
     return false;
   }
-};
+}
 
 // Save service status
-dbModule.saveServiceStatus = async (
+export async function saveServiceStatus(
   serviceName: string, 
   status: string, 
   memoryUsage?: string, 
   cpuUsage?: string, 
   uptime?: string
-): Promise<boolean> => {
+): Promise<boolean> {
   try {
-    await dbModule.run(
+    await run(
       'INSERT INTO service_status (service_name, status, memory_usage, cpu_usage, uptime) VALUES (?, ?, ?, ?, ?)',
       [serviceName, status, memoryUsage || null, cpuUsage || null, uptime || null]
     );
@@ -209,17 +208,17 @@ dbModule.saveServiceStatus = async (
     console.error('Error saving service status:', error);
     return false;
   }
-};
+}
 
 // Log backup information
-dbModule.logBackup = async (
+export async function logBackup(
   backupPath: string, 
   remotePath: string, 
   sizeBytes: number,
   status: string
-): Promise<boolean> => {
+): Promise<boolean> {
   try {
-    await dbModule.run(
+    await run(
       'INSERT INTO backups (backup_path, remote_path, size_bytes, status) VALUES (?, ?, ?, ?)',
       [backupPath, remotePath, sizeBytes, status]
     );
@@ -228,28 +227,28 @@ dbModule.logBackup = async (
     console.error('Error logging backup:', error);
     return false;
   }
-};
+}
 
 // Phase 5: Personality Core Database Functions
 
 // Get current bot mood
-dbModule.getCurrentMood = async (): Promise<any> => {
+export async function getCurrentMood(): Promise<any> {
   try {
-    return await dbModule.get('SELECT * FROM mood_states WHERE ended_at IS NULL ORDER BY started_at DESC LIMIT 1');
+    return await get('SELECT * FROM mood_states WHERE ended_at IS NULL ORDER BY started_at DESC LIMIT 1');
   } catch (error) {
     console.error('Error getting current mood:', error);
     return null;
   }
-};
+}
 
 // Set new bot mood
-dbModule.setMood = async (mood: string, triggerEvent: string, intensity: number): Promise<boolean> => {
+export async function setMood(mood: string, triggerEvent: string, intensity: number): Promise<boolean> {
   try {
     // End current mood if exists
-    await dbModule.run('UPDATE mood_states SET ended_at = CURRENT_TIMESTAMP WHERE ended_at IS NULL');
+    await run('UPDATE mood_states SET ended_at = CURRENT_TIMESTAMP WHERE ended_at IS NULL');
     
     // Set new mood
-    await dbModule.run(
+    await run(
       'INSERT INTO mood_states (mood, trigger_event, intensity) VALUES (?, ?, ?)',
       [mood, triggerEvent, intensity]
     );
@@ -259,16 +258,4 @@ dbModule.setMood = async (mood: string, triggerEvent: string, intensity: number)
     console.error('Error setting mood:', error);
     return false;
   }
-};
-
-// Ensure database is closed on process exit
-process.on('exit', () => {
-  db.close(err => {
-    if (err) {
-      console.error('Error closing database on exit:', err);
-    }
-  });
-});
-
-// Export the database module
-module.exports = dbModule;
+}
