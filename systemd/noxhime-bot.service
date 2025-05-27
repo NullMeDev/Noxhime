@@ -1,1 +1,14 @@
+[Unit]
+Description=Noxhime Discord Bot
+After=network.target
 
+[Service]
+WorkingDirectory=/home/nulladmin/noxhime-bot
+ExecStart=/usr/bin/npm run start
+Restart=always
+Environment=NODE_ENV=production
+EnvironmentFile=/home/nulladmin/noxhime-bot/.env
+User=nulladmin
+
+[Install]
+WantedBy=multi-user.target
