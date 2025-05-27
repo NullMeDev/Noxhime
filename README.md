@@ -164,12 +164,6 @@ A web dashboard is available at nullme.lol that provides:
 - Mood and personality management
 - Command history and interaction logs
 
-Contributions are welcome, either request here, or email me at null@nullme.dev! Please feel free to submit a pull request.
-
-Consider donating at https://ko-fi.com/NullMeDev
-
-Made With Love by NullMeDev.
-
 <p align="center">
 Contributions are welcome, either request here, or email me at null@nullme.dev! Please feel free to submit a pull request.
 </p>
@@ -177,4 +171,4 @@ Contributions are welcome, either request here, or email me at null@nullme.dev! 
 Consider donating at https://ko-fi.com/NullMeDev
 </p>
 <p align="center">
-Made With Love by NullMeDev.</p>
+Made With &#x1F49C by NullMeDev.</p>
