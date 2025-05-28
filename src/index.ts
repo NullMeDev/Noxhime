@@ -76,9 +76,8 @@ async function logEvent(type: string, description: string): Promise<boolean> {
   return await dbLogEvent(type, description);
 }
 
-const OWNER_ID = process.env.OWNER_ID!;
 const NOTIFY_CHANNEL_ID = process.env.NOTIFY_CHANNEL_ID || '';
-const BIOLOCK_ENABLED = process.env.BIOLOCK_ENABLED === 'true';
+const BIOLOCK_ENABLED = false; // Disabled - bot is now open for all users
 const BIOLOCK_PASSPHRASE = process.env.BIOLOCK_PASSPHRASE;
 const BIOLOCK_OVERRIDE_KEY = process.env.BIOLOCK_OVERRIDE_KEY;
 const COMMAND_PREFIX = process.env.COMMAND_PREFIX || '!';
@@ -99,7 +98,7 @@ const RCLONE_SCHEDULE = process.env.RCLONE_SCHEDULE || '0 0 * * *'; // Default: 
 const PERSONALITY_ENABLED = process.env.PERSONALITY_ENABLED === 'true';
 const DEFAULT_MOOD = process.env.DEFAULT_MOOD || 'focused';
 
-let bioLocked = BIOLOCK_ENABLED; // Bot starts in locked state if BIOLOCK is enabled
+let bioLocked = false; // BioLock disabled - bot is now open for all users
 
 const client = new Client({
   intents: [
@@ -332,26 +331,8 @@ client.on('messageCreate', async (message) => {
   const lowerContent = content.toLowerCase();
   const isTextChannel = message.channel.type === ChannelType.GuildText;
 
-  // BioLock System
-  if (BIOLOCK_ENABLED && bioLocked) {
-    if (message.author.id === OWNER_ID) {
-      if (content === BIOLOCK_PASSPHRASE || content === BIOLOCK_OVERRIDE_KEY) {
-        bioLocked = false;
-        await message.reply("BioLock disengaged. All systems online.");
-        await logEvent('SECURITY', 'BioLock disengaged by owner');
-        return;
-      }
-    }
-    
-    // If locked, only process biolock-related commands
-    if (!content.startsWith(COMMAND_PREFIX)) return;
-    
-    const command = content.slice(COMMAND_PREFIX.length).split(' ')[0];
-    if (command === 'status' && isTextChannel) {
-      await message.channel.send('Bot is online but in BioLock mode. Only owner can unlock.');
-    }
-    return;
-  }
+  // BioLock System - DISABLED (bot is now open for all users)
+  // All commands are now available to everyone
 
   // Command handling
   if (content.startsWith(COMMAND_PREFIX) && isTextChannel) {
@@ -366,10 +347,8 @@ client.on('messageCreate', async (message) => {
       case 'whoami':
       case 'who am i?':
       case 'who am i':
-        const isOwner = message.author.id === OWNER_ID;
-        const reply = isOwner
-          ? 'You are my creator. The architect behind my eyes.'
-          : `You are ${message.author.username}, a visitor in this digital garden.`;
+        // Everyone is welcome to use this bot
+        const reply = `You are ${message.author.username}, welcome to this digital garden.`;
         await message.channel.send(reply);
         break;
         
@@ -383,17 +362,14 @@ client.on('messageCreate', async (message) => {
           `\`${COMMAND_PREFIX}ask <question>\` – ask me a question using AI`,
           `\`${COMMAND_PREFIX}system\` – display system status and stats`,
           `\`${COMMAND_PREFIX}services\` – check status of system services`,
-          `\`${COMMAND_PREFIX}mood\` – see my current emotional state`
-        ];
-        const ownerOnly = [
-          `\`${COMMAND_PREFIX}restart\` – [OWNER ONLY] restart the bot`,
-          `\`${COMMAND_PREFIX}lock\` – [OWNER ONLY] engage BioLock`,
-          `\`${COMMAND_PREFIX}heal\` – [OWNER ONLY] trigger self-healing routine`,
-          `\`${COMMAND_PREFIX}logs <type> <count>\` – [OWNER ONLY] view recent logs`,
-          `\`${COMMAND_PREFIX}backup\` – [OWNER ONLY] trigger manual backup`,
-          `\`${COMMAND_PREFIX}sentinel <start|stop>\` – [OWNER ONLY] control sentinel system`,
-          `\`${COMMAND_PREFIX}incidents\` – [OWNER ONLY] view security incidents`,
-          `\`${COMMAND_PREFIX}whitelist <action>\` – [OWNER ONLY] manage IP/port whitelisting`
+          `\`${COMMAND_PREFIX}mood\` – see my current emotional state`,
+          `\`${COMMAND_PREFIX}restart\` – restart the bot`,
+          `\`${COMMAND_PREFIX}heal\` – trigger self-healing routine`,
+          `\`${COMMAND_PREFIX}logs <type> <count>\` – view recent logs`,
+          `\`${COMMAND_PREFIX}backup\` – trigger manual backup`,
+          `\`${COMMAND_PREFIX}sentinel <start|stop>\` – control sentinel system`,
+          `\`${COMMAND_PREFIX}incidents\` – view security incidents`,
+          `\`${COMMAND_PREFIX}whitelist <action>\` – manage server whitelisting`
         ];
         
         // Use personality system if enabled
@@ -405,14 +381,13 @@ client.on('messageCreate', async (message) => {
           );
           
           embed.addFields(
-            { name: 'General Commands', value: commands.join('\n') },
-            { name: 'Owner Commands', value: ownerOnly.join('\n') }
+            { name: 'All Commands (Available to Everyone)', value: commands.join('\n') }
           );
           
           await message.channel.send({ embeds: [embed] });
         } else {
           await message.channel.send({
-            content: `**Available Commands:**\n${commands.join('\n')}\n\n**Restricted Commands:**\n${ownerOnly.join('\n')}`,
+            content: `**Available Commands (All users can use these):**\n${commands.join('\n')}`,
           });
         }
         break;
@@ -439,33 +414,22 @@ client.on('messageCreate', async (message) => {
         break;
         
       case 'restart':
-        if (message.author.id === OWNER_ID) {
-          const auditChannel = NOTIFY_CHANNEL_ID
-            ? await client.channels.fetch(NOTIFY_CHANNEL_ID)
-            : null;
+        const auditChannel = NOTIFY_CHANNEL_ID
+          ? await client.channels.fetch(NOTIFY_CHANNEL_ID)
+          : null;
 
-          if (auditChannel?.isTextBased()) {
-            await (auditChannel as TextChannel).send('Onii-chan, I\'m sleepy... 💤');
-          }
-
-          await message.channel.send('Restarting now. Please wait...');
-          await logEvent('ADMIN', 'Owner initiated restart');
-          process.exit(0);
-        } else {
-          await message.reply("You don't have permission to restart me.");
+        if (auditChannel?.isTextBased()) {
+          await (auditChannel as TextChannel).send('Bot restart requested by user... 💤');
         }
+
+        await message.channel.send('Restarting now. Please wait...');
+        await logEvent('ADMIN', `User ${message.author.username} initiated restart`);
+        process.exit(0);
         break;
         
       case 'lock':
-        if (message.author.id === OWNER_ID && BIOLOCK_ENABLED) {
-          bioLocked = true;
-          await message.reply("BioLock engaged. Systems locked.");
-          await logEvent('SECURITY', 'BioLock engaged by owner');
-        } else if (!BIOLOCK_ENABLED) {
-          await message.reply("BioLock system is not enabled.");
-        } else {
-          await message.reply("You don't have permission to use this command.");
-        }
+        // Lock functionality removed - bot is now open for all users
+        await message.reply("Lock functionality has been removed. This bot is now freely available to all users!");
         break;
         
       case 'system':
@@ -496,85 +460,77 @@ client.on('messageCreate', async (message) => {
         break;
         
       case 'heal':
-        if (message.author.id === OWNER_ID) {
-          if (SELF_HEALING_ENABLED) {
-            await message.channel.send('🔄 Initiating self-healing routine...');
-            const selfHeal = setupSelfHealing(logEvent);
-            await selfHeal();
-            await message.channel.send('✅ Self-healing complete. Memory optimized and systems checked.');
-            await logEvent('MAINTENANCE', 'Manual self-healing triggered by owner');
-          } else {
-            await message.reply('Self-healing is not enabled in the configuration.');
-          }
+        if (SELF_HEALING_ENABLED) {
+          await message.channel.send('🔄 Initiating self-healing routine...');
+          const selfHeal = setupSelfHealing(logEvent);
+          await selfHeal();
+          await message.channel.send('✅ Self-healing complete. Memory optimized and systems checked.');
+          await logEvent('MAINTENANCE', `Manual self-healing triggered by ${message.author.username}`);
         } else {
-          await message.reply("You don't have permission to use this command.");
+          await message.reply('Self-healing is not enabled in the configuration.');
         }
         break;
         
       case 'logs':
-        if (message.author.id === OWNER_ID) {
-          const logType = args[0] || 'all';
-          const count = parseInt(args[1] || '5');
+        const logType = args[0] || 'all';
+        const count = parseInt(args[1] || '5');
+        
+        let query = 'SELECT * FROM events';
+        const params: any[] = [];
+        
+        if (logType !== 'all') {
+          query += ' WHERE type = ?';
+          params.push(logType.toUpperCase());
+        }
+        
+        query += ' ORDER BY timestamp DESC LIMIT ?';
+        params.push(count);
+        
+        try {
+          const logs = await dbAll(query, params);
           
-          let query = 'SELECT * FROM events';
-          const params: any[] = [];
-          
-          if (logType !== 'all') {
-            query += ' WHERE type = ?';
-            params.push(logType.toUpperCase());
+          if (logs.length === 0) {
+            await message.channel.send(`No logs found for type: ${logType}`);
+            return;
           }
           
-          query += ' ORDER BY timestamp DESC LIMIT ?';
-          params.push(count);
-          
-          try {
-            const logs = await dbAll(query, params);
+          if (PERSONALITY_ENABLED) {
+            const personality = getPersonalityCore();
+            const embed = personality.createStyledEmbed(
+              `Recent Logs: ${logType.toUpperCase()}`,
+              `Last ${logs.length} log entries`
+            );
             
-            if (logs.length === 0) {
-              await message.channel.send(`No logs found for type: ${logType}`);
-              return;
-            }
-            
-            if (PERSONALITY_ENABLED) {
-              const personality = getPersonalityCore();
-              const embed = personality.createStyledEmbed(
-                `Recent Logs: ${logType.toUpperCase()}`,
-                `Last ${logs.length} log entries`
-              );
-              
-              logs.forEach(log => {
-                const time = new Date(log.timestamp).toLocaleString();
-                embed.addFields({
-                  name: `[${log.type}] at ${time}`,
-                  value: log.description || 'No details provided'
-                });
+            logs.forEach(log => {
+              const time = new Date(log.timestamp).toLocaleString();
+              embed.addFields({
+                name: `[${log.type}] at ${time}`,
+                value: log.description || 'No details provided'
               });
-              
-              await message.channel.send({ embeds: [embed] });
-            } else {
-              const embed = new EmbedBuilder()
-                .setTitle(`Recent Logs: ${logType.toUpperCase()}`)
-                .setColor(0x9B59B6)
-                .setDescription(`Last ${logs.length} log entries`);
-                
-              logs.forEach(log => {
-                const time = new Date(log.timestamp).toLocaleString();
-                embed.addFields({
-                  name: `[${log.type}] at ${time}`,
-                  value: log.description || 'No details provided'
-                });
-              });
-              
-              await message.channel.send({ embeds: [embed] });
-            }
+            });
             
-            await logEvent('COMMAND', `User ${message.author.username} viewed logs of type ${logType}`);
-          } catch (error) {
-            console.error('Error fetching logs:', error);
-            await message.reply('Error retrieving logs. Please try again later.');
+            await message.channel.send({ embeds: [embed] });
+          } else {
+            const embed = new EmbedBuilder()
+              .setTitle(`Recent Logs: ${logType.toUpperCase()}`)
+              .setColor(0x9B59B6)
+              .setDescription(`Last ${logs.length} log entries`);
+              
+            logs.forEach(log => {
+              const time = new Date(log.timestamp).toLocaleString();
+              embed.addFields({
+                name: `[${log.type}] at ${time}`,
+                value: log.description || 'No details provided'
+              });
+            });
+            
+            await message.channel.send({ embeds: [embed] });
           }
-        } else {
-          await message.reply("You don't have permission to use this command.");
+          
+          await logEvent('COMMAND', `User ${message.author.username} viewed logs of type ${logType}`);
+        } catch (error) {
+          console.error('Error fetching logs:', error);
+          await message.reply('Error retrieving logs. Please try again later.');
         }
         break;
         
@@ -725,123 +681,111 @@ client.on('messageCreate', async (message) => {
         break;
       
       case 'backup':
-        if (message.author.id === OWNER_ID) {
-          if (RCLONE_BACKUP_ENABLED && SENTINEL_ENABLED) {
-            await message.channel.send('🔄 Initiating manual backup process...');
-            
-            try {
-              const scriptPath = path.join(process.cwd(), 'scripts', 'backup.sh');
-              if (fs.existsSync(scriptPath)) {
-                const { exec } = require('child_process');
-                exec(scriptPath, async (error: any, stdout: string, stderr: string) => {
-                  if (error) {
-                    console.error(`Backup error: ${error}`);
-                    await message.channel.send(`❌ Backup failed: ${error.message}`);
-                    return;
-                  }
-                  
-                  if (stderr) {
-                    console.error(`Backup stderr: ${stderr}`);
-                  }
-                  
-                  await message.channel.send('✅ Backup completed successfully!');
-                  await logEvent('BACKUP', 'Manual backup triggered by owner');
-                });
-              } else {
-                await message.channel.send('❌ Backup script not found. Please set up rclone first.');
-              }
-            } catch (error) {
-              console.error('Error running backup:', error);
-              await message.channel.send('❌ Error executing backup.');
+        if (RCLONE_BACKUP_ENABLED && SENTINEL_ENABLED) {
+          await message.channel.send('🔄 Initiating manual backup process...');
+          
+          try {
+            const scriptPath = path.join(process.cwd(), 'scripts', 'backup.sh');
+            if (fs.existsSync(scriptPath)) {
+              const { exec } = require('child_process');
+              exec(scriptPath, async (error: any, stdout: string, stderr: string) => {
+                if (error) {
+                  console.error(`Backup error: ${error}`);
+                  await message.channel.send(`❌ Backup failed: ${error.message}`);
+                  return;
+                }
+                
+                if (stderr) {
+                  console.error(`Backup stderr: ${stderr}`);
+                }
+                
+                await message.channel.send('✅ Backup completed successfully!');
+                await logEvent('BACKUP', `Manual backup triggered by ${message.author.username}`);
+              });
+            } else {
+              await message.channel.send('❌ Backup script not found. Please set up rclone first.');
             }
-          } else {
-            await message.reply('Backup system is not enabled.');
+          } catch (error) {
+            console.error('Error running backup:', error);
+            await message.channel.send('❌ Error executing backup.');
           }
         } else {
-          await message.reply("You don't have permission to use this command.");
+          await message.reply('Backup system is not enabled.');
         }
         break;
       
       case 'sentinel':
-        if (message.author.id === OWNER_ID) {
-          const action = args[0]?.toLowerCase();
+        const action = args[0]?.toLowerCase();
+        
+        if (SENTINEL_ENABLED) {
+          const sentinel = getSentinel(client, NOTIFY_CHANNEL_ID);
           
-          if (SENTINEL_ENABLED) {
-            const sentinel = getSentinel(client, NOTIFY_CHANNEL_ID);
-            
-            if (action === 'start') {
-              sentinel.start(SENTINEL_CHECK_INTERVAL);
-              await message.channel.send('✅ Sentinel monitoring system started.');
-              await logEvent('SENTINEL', 'Sentinel system started by owner');
-            } else if (action === 'stop') {
-              sentinel.stop();
-              await message.channel.send('✅ Sentinel monitoring system stopped.');
-              await logEvent('SENTINEL', 'Sentinel system stopped by owner');
-            } else {
-              await message.channel.send('Please specify either "start" or "stop" for the sentinel command.');
-            }
+          if (action === 'start') {
+            sentinel.start(SENTINEL_CHECK_INTERVAL);
+            await message.channel.send('✅ Sentinel monitoring system started.');
+            await logEvent('SENTINEL', `Sentinel system started by ${message.author.username}`);
+          } else if (action === 'stop') {
+            sentinel.stop();
+            await message.channel.send('✅ Sentinel monitoring system stopped.');
+            await logEvent('SENTINEL', `Sentinel system stopped by ${message.author.username}`);
           } else {
-            await message.reply('Sentinel Intelligence is not enabled.');
+            await message.channel.send('Please specify either "start" or "stop" for the sentinel command.');
           }
         } else {
-          await message.reply("You don't have permission to use this command.");
+          await message.reply('Sentinel Intelligence is not enabled.');
         }
         break;
       
       case 'incidents':
-        if (message.author.id === OWNER_ID) {
-          const count = parseInt(args[0] || '5');
+        const incidentCount = parseInt(args[0] || '5');
+        
+        try {
+          const incidents = await getRecentIncidents(incidentCount);
           
-          try {
-            const incidents = await getRecentIncidents(count);
-            
-            if (incidents.length === 0) {
-              await message.channel.send('No security incidents found.');
-              return;
-            }
-            
-            if (PERSONALITY_ENABLED) {
-              const personality = getPersonalityCore();
-              const embed = personality.createStyledEmbed(
-                'Security Incidents Report',
-                `Last ${incidents.length} security incidents detected`
-              );
-              
-              incidents.forEach((incident: any) => {
-                const time = new Date(incident.created_at).toLocaleString();
-                const status = incident.resolved ? '✅ Resolved' : '⚠️ Active';
-                embed.addFields({
-                  name: `[${incident.severity.toUpperCase()}] ${incident.source} - ${time}`,
-                  value: `${status}: ${incident.description}\n${incident.details || 'No additional details'}`
-                });
-              });
-              
-              await message.channel.send({ embeds: [embed] });
-            } else {
-              const embed = new EmbedBuilder()
-                .setTitle('Security Incidents Report')
-                .setColor(0xE74C3C)
-                .setDescription(`Last ${incidents.length} security incidents`);
-                
-              incidents.forEach((incident: any) => {
-                const time = new Date(incident.created_at).toLocaleString();
-                const status = incident.resolved ? '✅ Resolved' : '⚠️ Active';
-                embed.addFields({
-                  name: `[${incident.severity.toUpperCase()}] ${incident.source} - ${time}`,
-                  value: `${status}: ${incident.description}\n${incident.details || 'No additional details'}`
-                });
-              });
-              
-              await message.channel.send({ embeds: [embed] });
-            }
-            
-            await logEvent('COMMAND', `User ${message.author.username} viewed security incidents`);
-          } catch (error) {
-            console.error('Error fetching incidents:', error);
-            await message.reply('Error retrieving incident information.');
+          if (incidents.length === 0) {
+            await message.channel.send('No security incidents found.');
+            return;
           }
-        } else {
-          await message.reply("You don't have permission to use this command.");
+          
+          if (PERSONALITY_ENABLED) {
+            const personality = getPersonalityCore();
+            const embed = personality.createStyledEmbed(
+              'Security Incidents Report',
+              `Last ${incidents.length} security incidents detected`
+            );
+            
+            incidents.forEach((incident: any) => {
+              const time = new Date(incident.created_at).toLocaleString();
+              const status = incident.resolved ? '✅ Resolved' : '⚠️ Active';
+              embed.addFields({
+                name: `[${incident.severity.toUpperCase()}] ${incident.source} - ${time}`,
+                value: `${status}: ${incident.description}\n${incident.details || 'No additional details'}`
+              });
+            });
+            
+            await message.channel.send({ embeds: [embed] });
+          } else {
+            const embed = new EmbedBuilder()
+              .setTitle('Security Incidents Report')
+              .setColor(0xE74C3C)
+              .setDescription(`Last ${incidents.length} security incidents`);
+              
+            incidents.forEach((incident: any) => {
+              const time = new Date(incident.created_at).toLocaleString();
+              const status = incident.resolved ? '✅ Resolved' : '⚠️ Active';
+              embed.addFields({
+                name: `[${incident.severity.toUpperCase()}] ${incident.source} - ${time}`,
+                value: `${status}: ${incident.description}\n${incident.details || 'No additional details'}`
+              });
+            });
+            
+            await message.channel.send({ embeds: [embed] });
+          }
+          
+          await logEvent('COMMAND', `User ${message.author.username} viewed security incidents`);
+        } catch (error) {
+          console.error('Error fetching incidents:', error);
+          await message.reply('Error retrieving incident information.');
         }
         break;
         

@@ -17,19 +17,7 @@ This document provides a comprehensive list of all available commands for the No
 | `!services` | Check the status of system services | `!services` |
 | `!mood` | See the bot's current emotional state | `!mood` |
 
-### Owner-Only Commands
-
-These commands can only be used by the Discord user ID specified in the OWNER_ID environment variable.
-
-#### Security Commands
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `!lock` | Engage the BioLock security system | `!lock` |
-| `!unlock <passphrase>` | Disengage the BioLock with the specified passphrase | `!unlock your_passphrase_here` |
-| `!incidents` | View recent security incidents | `!incidents 10` |
-
-#### System Management Commands
+### System Management Commands (Available to All Users)
 
 | Command | Description | Example |
 |---------|-------------|---------|
@@ -38,8 +26,12 @@ These commands can only be used by the Discord user ID specified in the OWNER_ID
 | `!logs <type> <count>` | View recent logs of specified type | `!logs SYSTEM 5` |
 | `!backup` | Trigger manual backup | `!backup` |
 | `!sentinel <action>` | Control sentinel monitoring system | `!sentinel start` |
+| `!incidents` | View recent security incidents | `!incidents 10` |
+| `!lock` | Display information about lock functionality | `!lock` |
 
-#### Whitelist Management Commands
+### Whitelist Management Commands (Admin-Only)
+
+These commands require Discord Administrator permissions in the server.
 
 | Command | Description | Example |
 |---------|-------------|---------|
@@ -57,7 +49,7 @@ These commands can only be used by the Discord user ID specified in the OWNER_ID
 
 #### Mood Control Commands
 
-These commands modify the bot's personality:
+These commands modify the bot's personality (available to all users):
 
 | Command | Description | Example |
 |---------|-------------|---------|
@@ -117,5 +109,5 @@ The Noxhime Bot also provides API endpoints for monitoring and integration:
 | Endpoint | Description | Authentication |
 |----------|-------------|----------------|
 | `/api/status/public` | Public status information | None required |
-| `/api/status` | Detailed bot status | API key required |
-| `/api/incidents` | Recent security incidents | API key required |
+| `/api/status` | Detailed bot status | None required |
+| `/api/incidents` | Recent security incidents | None required |

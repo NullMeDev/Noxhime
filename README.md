@@ -1,15 +1,15 @@
 # Noxhime Bot
 
-Autonomous Discord bot with system monitoring, security intelligence, IP/Port whitelisting, and OpenAI integration with evolving personality.
+**Free and Open** Discord bot with system monitoring, security intelligence, IP/Port whitelisting, and OpenAI integration with evolving personality.
 
 ## Features
 
-- Discord integration with command system
+- **Open Access** - No authentication required, free for everyone to use
+- Discord integration with comprehensive command system
 - OpenAI-powered chat responses
-- BioLock security system for owner-only access
-- **IP/Port Whitelisting** for enhanced API security
+- **IP/Port Whitelisting** for API security (configurable per installation)
   - Restrict API access to specific IP addresses and ports
-  - Manage whitelist via Discord commands
+  - Manage whitelist via Discord admin commands
   - Configurable through installation or bot commands
 - SQLite database for event logging
 - Notification system for bot status changes
@@ -20,6 +20,7 @@ Autonomous Discord bot with system monitoring, security intelligence, IP/Port wh
 - Sentinel Intelligence with log monitoring and suspicious behavior detection
 - Automated backup system with Rclone integration
 - Evolving Personality Core with mood-based responses
+- **All commands available to everyone** - no owner restrictions
 
 ## Setup Instructions
 
@@ -66,10 +67,11 @@ If you prefer the original installer without whitelist configuration:
 3. Copy `.env.example` to `.env` and fill in your credentials:
    - Discord Bot Token
    - OpenAI API Key
-   - Owner Discord ID
+   - Discord Channel ID for notifications
    - Monitoring settings
    - Sentinel Intelligence settings
    - Personality Core settings
+   - **Note**: No owner ID needed - bot is open access
 4. Install required system tools:
    ```
    sudo apt update
@@ -111,44 +113,57 @@ For detailed documentation on the whitelist feature, see [docs/whitelist.md](doc
 
 ## Commands
 
-Noxhime Bot provides a comprehensive set of commands for both Discord interaction and server management. 
+Noxhime Bot provides a comprehensive set of commands for Discord interaction and server management. **All commands are available to everyone** - no authentication required!
 
 See the complete [Command Reference](docs/commands.md) for a detailed list of:
-- Discord commands for general users
-- Owner-only Discord commands
+- Discord commands available to all users
+- Whitelist management commands (requires Discord admin permissions)
 - Server-side management commands
-- Whitelist management commands
-- API endpoints
+- API endpoints (open access)
 
 Here are some of the most commonly used commands:
 
 - `!status` - Check if the bot is online
 - `!ask <question>` - Ask the bot a question using AI
 - `!system` - Display system status and statistics
-- `!whitelist status` - Show current whitelist configuration
+- `!whitelist status` - Show current whitelist configuration (admin only)
 
-### General Commands
+### Available Commands for Everyone
 - `!status` - Check if bot is online
-- `!whoami` - Shows your identity/role
+- `!whoami` - Shows welcome message for all users
 - `!cmds` - Lists available commands
 - `!ask <question>` - Ask the AI a question
 - `!system` - Display system status and statistics
 - `!uptime` - Shows system and bot uptime
 - `!services` - Checks status of system services
 - `!mood` - Shows bot's current emotional state
-
-### Owner-only Commands
 - `!restart` - Restart the bot
-- `!lock` - Engage BioLock security system
 - `!heal` - Trigger self-healing maintenance routine
 - `!logs <type> <count>` - View recent system logs
 - `!backup` - Triggers manual backup
 - `!sentinel <start|stop>` - Controls sentinel monitoring
 - `!incidents` - Views security incidents
+- `!lock` - Display information about lock functionality
 
-## BioLock System
+### Admin-Only Commands (Discord Server Administrators)
+- `!whitelist` commands - Manage IP/port whitelisting (requires Discord admin permissions)
 
-The BioLock system provides an additional layer of security. When enabled, the bot will only respond to basic commands until unlocked by the owner using the passphrase defined in the .env file.
+## Authentication and Security
+
+**Noxhime Bot is now completely open and free for everyone to use!**
+
+### What Changed
+- ❌ **BioLock System**: Completely removed - no more owner-only restrictions
+- ❌ **Owner Authentication**: No owner ID required anymore  
+- ❌ **API Key Requirements**: API endpoints are now open access
+- ✅ **Whitelist Management**: Now requires Discord server admin permissions instead of owner-only
+- ✅ **Per-Server Security**: Security features are configured per installation, not per creator
+
+### Current Access Model
+- **All Discord commands** are available to everyone
+- **Whitelist management** requires Discord Administrator permissions in the server
+- **API endpoints** are open for public access (can be restricted per installation with IP/Port whitelisting)
+- **Installation security** is managed at the server level, not user level
 
 ## Server Monitoring System
 
@@ -249,6 +264,16 @@ Consider donating at https://ko-fi.com/NullMeDev
 Made With &#x1F49C by NullMeDev.</p>
 
 ## Changelog
+
+### v2.1.0 (May 28, 2025)
+- **MAJOR CHANGE**: Removed all authentication measures - bot is now free and open for everyone
+- **Removed**: BioLock security system completely  
+- **Removed**: Owner ID requirements and owner-only command restrictions
+- **Removed**: API key authentication - all API endpoints now open access
+- **Changed**: Whitelist management now requires Discord Administrator permissions instead of owner-only
+- **Updated**: All commands now available to all users
+- **Updated**: Documentation and installation scripts to reflect open access model
+- **Updated**: Environment configuration to remove authentication requirements
 
 ### v2.0.1 (May 28, 2025)
 - **Fixed**: ASCII artwork display issues in install scripts

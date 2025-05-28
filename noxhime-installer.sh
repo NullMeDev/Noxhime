@@ -222,9 +222,6 @@ setup_environment() {
   read -p "Enter Discord Channel ID for notifications: " NOTIFY_CHANNEL_ID
   echo "NOTIFY_CHANNEL_ID=$NOTIFY_CHANNEL_ID" >> "$ENV_FILE"
   
-  read -p "Enter Your Discord User ID (owner): " OWNER_ID
-  echo "OWNER_ID=$OWNER_ID" >> "$ENV_FILE"
-  
   read -p "Enter Command Prefix [!]: " COMMAND_PREFIX
   COMMAND_PREFIX=${COMMAND_PREFIX:-!}
   echo "COMMAND_PREFIX=$COMMAND_PREFIX" >> "$ENV_FILE"
@@ -239,22 +236,8 @@ setup_environment() {
   echo "DATABASE_PATH=./data/noxhime.db" >> "$ENV_FILE"
   
   echo "" >> "$ENV_FILE"
-  echo "# BioLock Security" >> "$ENV_FILE"
-  read -p "Enable BioLock Security? (y/n) [y]: " -n 1 -r BIOLOCK_ENABLE
-  echo
-  BIOLOCK_ENABLED="true"
-  if [[ ! $BIOLOCK_ENABLE =~ ^[Yy]$ ]]; then
-    BIOLOCK_ENABLED="false"
-  fi
-  echo "BIOLOCK_ENABLED=$BIOLOCK_ENABLED" >> "$ENV_FILE"
-  
-  if [ "$BIOLOCK_ENABLED" = "true" ]; then
-    read -p "Enter BioLock Passphrase: " BIOLOCK_PASSPHRASE
-    echo "BIOLOCK_PASSPHRASE=$BIOLOCK_PASSPHRASE" >> "$ENV_FILE"
-    
-    read -p "Enter BioLock Emergency Override Key: " BIOLOCK_OVERRIDE_KEY
-    echo "BIOLOCK_OVERRIDE_KEY=$BIOLOCK_OVERRIDE_KEY" >> "$ENV_FILE"
-  fi
+  echo "# Security Features - Disabled for open access" >> "$ENV_FILE"
+  echo "# BIOLOCK_ENABLED=false" >> "$ENV_FILE"
   
   echo "" >> "$ENV_FILE"
   echo "# Monitoring Configuration" >> "$ENV_FILE"

@@ -1,4 +1,4 @@
-import { Message } from 'discord.js';
+import { Message, PermissionFlagsBits } from 'discord.js';
 import fs from 'fs';
 import path from 'path';
 import { 
@@ -10,7 +10,6 @@ import {
   removePortFromWhitelist 
 } from './whitelist';
 
-const OWNER_ID = process.env.OWNER_ID;
 const WHITELIST_CONFIG_PATH = process.env.WHITELIST_CONFIG_PATH || './config/whitelist.json';
 
 /**
@@ -20,9 +19,9 @@ const WHITELIST_CONFIG_PATH = process.env.WHITELIST_CONFIG_PATH || './config/whi
  * @returns True if the command was handled, false otherwise
  */
 export async function handleWhitelistCommands(message: Message, args: string[]): Promise<boolean> {
-  // Check if the user is the bot owner
-  if (message.author.id !== OWNER_ID) {
-    await message.reply('⚠️ You do not have permission to use whitelist commands.');
+  // Check if the user has administrator permissions in the server
+  if (!message.member?.permissions.has(PermissionFlagsBits.Administrator)) {
+    await message.reply('⚠️ You need Administrator permissions to use whitelist commands.');
     return true;
   }
 

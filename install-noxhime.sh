@@ -206,10 +206,9 @@ setup_environment() {
     cp "./data/env.backup" ".env" || error "Failed to create .env file from template"
   else
     cat > .env << EOL
-# Discord Configuration
+# Discord Configuration - Open Access (no owner restrictions)
 DISCORD_TOKEN=
 CLIENT_ID=
-OWNER_ID=
 NOTIFY_CHANNEL_ID=
 COMMAND_PREFIX=!
 
@@ -219,10 +218,10 @@ OPENAI_API_KEY=
 # Database Configuration
 DATABASE_PATH=./data/noxhime.db
 
-# BioLock Security
-BIOLOCK_ENABLED=true
-BIOLOCK_PASSPHRASE=
-BIOLOCK_OVERRIDE_KEY=
+# Security Features - Disabled for open access
+# BIOLOCK_ENABLED=false
+# BIOLOCK_PASSPHRASE=
+# BIOLOCK_OVERRIDE_KEY=
 
 # Monitoring Configuration
 MONIT_ENABLED=true
@@ -245,26 +244,16 @@ EOL
   # Prompt for critical configuration values
   read -p "Enter Discord Bot Token: " discord_token
   read -p "Enter Discord Client ID: " client_id
-  read -p "Enter Discord Owner ID: " owner_id
   read -p "Enter Discord Notification Channel ID: " notify_channel_id
   read -p "Enter OpenAI API Key: " openai_key
-  read -p "Enter BioLock Passphrase: " biolock_passphrase
-  
-  # Generate a random override key if not provided
-  biolock_override_key=$(tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 20)
   
   # Update the .env file with provided values
   sed -i -e "s|DISCORD_TOKEN=.*|DISCORD_TOKEN=$discord_token|g" \
          -e "s|CLIENT_ID=.*|CLIENT_ID=$client_id|g" \
-         -e "s|OWNER_ID=.*|OWNER_ID=$owner_id|g" \
          -e "s|NOTIFY_CHANNEL_ID=.*|NOTIFY_CHANNEL_ID=$notify_channel_id|g" \
-         -e "s|OPENAI_API_KEY=.*|OPENAI_API_KEY=$openai_key|g" \
-         -e "s|BIOLOCK_PASSPHRASE=.*|BIOLOCK_PASSPHRASE=\"$biolock_passphrase\"|g" \
-         -e "s|BIOLOCK_OVERRIDE_KEY=.*|BIOLOCK_OVERRIDE_KEY=$biolock_override_key|g" .env
+         -e "s|OPENAI_API_KEY=.*|OPENAI_API_KEY=$openai_key|g" .env
   
   success "Environment configuration completed!"
-  success "BioLock Override Key: $biolock_override_key"
-  status "IMPORTANT: Store this override key in a secure location!"
 }
 
 # Function to configure IP/Port whitelisting

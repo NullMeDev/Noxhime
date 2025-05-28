@@ -337,14 +337,12 @@ setup_test_environment() {
   cat > .env << 'EOF'
 DISCORD_TOKEN=your_discord_token_here
 CLIENT_ID=your_client_id_here
-OWNER_ID=your_owner_id_here
 NOTIFY_CHANNEL_ID=your_channel_id_here
 OPENAI_API_KEY=your_openai_api_key_here
 DATABASE_PATH=./data/noxhime.db
 COMMAND_PREFIX=!
-BIOLOCK_ENABLED=true
-BIOLOCK_PASSPHRASE="your_biolock_passphrase_here"
-BIOLOCK_OVERRIDE_KEY=your_override_key_here
+# Security features disabled for open access
+# BIOLOCK_ENABLED=false
 APPLICATION_ID=your_application_id_here
 PUBLIC_KEY=your_public_key_here
 EOF
@@ -381,9 +379,6 @@ setup_manual_environment() {
   read -p "Enter Discord Channel ID for notifications: " NOTIFY_CHANNEL_ID
   echo "NOTIFY_CHANNEL_ID=$NOTIFY_CHANNEL_ID" >> .env
   
-  read -p "Enter Your Discord User ID (owner): " OWNER_ID
-  echo "OWNER_ID=$OWNER_ID" >> .env
-  
   read -p "Enter Command Prefix [!]: " COMMAND_PREFIX
   COMMAND_PREFIX=${COMMAND_PREFIX:-!}
   echo "COMMAND_PREFIX=$COMMAND_PREFIX" >> .env
@@ -398,22 +393,8 @@ setup_manual_environment() {
   echo "DATABASE_PATH=./data/noxhime.db" >> .env
   
   echo "" >> .env
-  echo "# BioLock Security" >> .env
-  read -p "Enable BioLock Security? (y/n) [y]: " -n 1 -r BIOLOCK_ENABLE
-  echo
-  BIOLOCK_ENABLED="true"
-  if [[ ! $BIOLOCK_ENABLE =~ ^[Yy]$ ]]; then
-    BIOLOCK_ENABLED="false"
-  fi
-  echo "BIOLOCK_ENABLED=$BIOLOCK_ENABLED" >> .env
-  
-  if [ "$BIOLOCK_ENABLED" = "true" ]; then
-    read -p "Enter BioLock Passphrase: " BIOLOCK_PASSPHRASE
-    echo "BIOLOCK_PASSPHRASE=\"$BIOLOCK_PASSPHRASE\"" >> .env
-    
-    read -p "Enter BioLock Emergency Override Key: " BIOLOCK_OVERRIDE_KEY
-    echo "BIOLOCK_OVERRIDE_KEY=$BIOLOCK_OVERRIDE_KEY" >> .env
-  fi
+  echo "# Security Features - Disabled for open access" >> .env
+  echo "# BIOLOCK_ENABLED=false" >> .env
   
   # Create backup
   mkdir -p ./data

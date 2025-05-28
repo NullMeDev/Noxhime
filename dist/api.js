@@ -69,28 +69,16 @@ class ApiServer {
         this.app.use(express_1.default.json());
         // Load and apply whitelist configuration if enabled
         const whitelistEnabled = process.env.WHITELIST_ENABLED === 'true';
-        // Apply whitelist middleware before API key authentication
+        // Apply whitelist middleware (IP/Port filtering only)
         if (whitelistEnabled) {
             const whitelistConfigPath = process.env.WHITELIST_CONFIG_PATH || './config/whitelist.json';
             const whitelistConfig = (0, whitelist_1.loadWhitelistConfig)(whitelistConfigPath);
-            // Apply whitelist middleware before API key authentication
+            // Apply whitelist middleware for IP/Port filtering
             this.app.use((0, whitelist_1.whitelistMiddleware)(whitelistConfig));
             console.log('IP/Port whitelist protection enabled');
         }
-        // API key authentication middleware
-        this.app.use('/api', (req, res, next) => {
-            const apiKey = req.headers['x-api-key'];
-            // Skip auth if no API keys configured or for status endpoint
-            if (this.apiKeys.length === 0 || req.path === '/api/status/public') {
-                next();
-                return;
-            }
-            if (!apiKey || !this.apiKeys.includes(apiKey)) {
-                res.status(401).json({ error: 'Unauthorized' });
-                return;
-            }
-            next();
-        });
+        // Note: API key authentication removed - API is now open for all users
+        console.log('API authentication disabled - open access enabled');
     }
     /**
      * Set up API routes

@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleWhitelistCommands = handleWhitelistCommands;
+const discord_js_1 = require("discord.js");
 const whitelist_1 = require("./whitelist");
-const OWNER_ID = process.env.OWNER_ID;
 const WHITELIST_CONFIG_PATH = process.env.WHITELIST_CONFIG_PATH || './config/whitelist.json';
 /**
  * Handler for whitelist-related commands
@@ -11,9 +11,9 @@ const WHITELIST_CONFIG_PATH = process.env.WHITELIST_CONFIG_PATH || './config/whi
  * @returns True if the command was handled, false otherwise
  */
 async function handleWhitelistCommands(message, args) {
-    // Check if the user is the bot owner
-    if (message.author.id !== OWNER_ID) {
-        await message.reply('⚠️ You do not have permission to use whitelist commands.');
+    // Check if the user has administrator permissions in the server
+    if (!message.member?.permissions.has(discord_js_1.PermissionFlagsBits.Administrator)) {
+        await message.reply('⚠️ You need Administrator permissions to use whitelist commands.');
         return true;
     }
     if (!args || args.length < 1) {

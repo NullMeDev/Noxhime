@@ -1,6 +1,6 @@
 {
   "name": "noxhime-bot",
-  "version": "2.0.1",
+  "version": "3.0.0",
   "main": "dist/index.js",
   "scripts": {
     "start": "ts-node src/index.ts",
@@ -21,7 +21,14 @@
     "dotenv": "^16.3.1",
     "express": "^5.1.0",
     "openai": "^4.24.1",
-    "sqlite3": "^5.1.6"
+    "sqlite3": "^5.1.6",
+    "node-ssh": "^13.2.0",
+    "axios": "^1.7.7",
+    "child_process": "^1.0.2",
+    "fs-extra": "^11.2.0",
+    "node-cron": "^3.0.3",
+    "iptables": "0.0.4",
+    "netstat": "0.0.2"
   },
   "description": "Autonomous Discord bot with system monitoring and OpenAI integration.",
   "repository": {
