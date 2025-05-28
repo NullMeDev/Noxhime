@@ -250,6 +250,12 @@ Made With &#x1F49C by NullMeDev.</p>
 
 ## Changelog
 
+### v2.0.1 (May 28, 2025)
+- **Fixed**: ASCII artwork display issues in install scripts
+- **Fixed**: Script variable ordering and undefined PROJECT_ROOT error
+- **Improved**: Version number positioning in ASCII art output
+- **Updated**: Install script flow and variable definitions
+
 ### v2.0.0 (May 27, 2025)
 - **Added**: Version set update
 - **Added**: Auto-update feature that checks for updates from GitHub repository

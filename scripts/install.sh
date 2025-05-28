@@ -4,8 +4,32 @@
 
 set -e  # Exit on error
 
+# Midnight Purple color for ASCII art
+MIDNIGHT_PURPLE='\033[38;5;92m'
+NC='\033[0m' # No Color
+BOLD='\033[1m'
+
+# Display ASCII art and welcome message
+clear
+
+# Get script directory and project root first
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# Get version number
+VERSION=$(grep '"version"' "$PROJECT_ROOT/package.json" | head -1 | sed 's/.*"version": "\(.*\)",/\1/')
+
+echo -e "${BOLD}${MIDNIGHT_PURPLE}"
+echo "███╗   ██╗ ██████╗ ██╗  ██╗██╗  ██╗██╗███╗   ███╗███████╗"
+echo "████╗  ██║██╔═══██╗╚██╗██╔╝██║  ██║██║████╗ ████║██╔════╝"
+echo "██╔██╗ ██║██║   ██║ ╚███╔╝ ███████║██║██╔████╔██║█████╗  "
+echo "██║╚██╗██║██║   ██║ ██╔██╗ ██╔══██║██║██║╚██╔╝██║██╔══╝  "
+echo "██║ ╚████║╚██████╔╝██╔╝ ██╗██║  ██║██║██║ ╚═╝ ██║███████╗"
+echo "╚═╝  ╚═══╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝╚═╝     ╚═╝╚══════╝"
+echo -e "${MIDNIGHT_PURPLE}                     Made with 💜 by NullMeDev       v$VERSION${NC}"
+echo
+echo -e "${BOLD}Noxhime Bot Installation Script${NC}"
+echo
 BOT_USER="nulladmin"
 BOT_HOME="/home/$BOT_USER"
 BOT_PATH="$BOT_HOME/noxhime-bot"
@@ -34,14 +58,15 @@ for cmd in "${REQUIRED_CMDS[@]}"; do
   fi
 done
 
-# Install Node.js & build essentials
-# Use Node.js 20.x for Ubuntu 24.04 compatibility
-apt install -y ca-certificates curl gnupg
-mkdir -p /etc/apt/keyrings
-curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
-echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
-apt update
-apt install -y nodejs build-essential
+# Install NVM and Node.js 18
+export NVM_DIR="$HOME/.nvm"
+if [ ! -d "$NVM_DIR" ]; then
+  echo "[+] Installing NVM..."
+  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+fi
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+nvm install 18
+nvm use 18
 
 # Install TypeScript tools
 echo "[+] Installing ts-node + typescript"
@@ -49,11 +74,11 @@ npm install -g typescript@latest ts-node@latest --no-fund --no-audit
 
 # Install SQLite libs
 echo "[+] Installing sqlite3"
-apt install -y sqlite3 libsqlite3-dev
+sudo apt install -y sqlite3 libsqlite3-dev
 
 # Install NGINX and Certbot
 echo "[+] Installing nginx & certbot"
-apt install -y nginx certbot python3-certbot-nginx
+sudo apt install -y nginx certbot python3-certbot-nginx
 
 # Install PM2
 echo "[+] Installing PM2 for process management"
@@ -61,15 +86,15 @@ npm install -g pm2@latest --no-fund --no-audit
 
 # Install Monit and Fail2Ban for system monitoring
 echo "[+] Installing Monit and Fail2Ban"
-apt install -y monit fail2ban
+sudo apt install -y monit fail2ban
 
 # Git & curl (safety)
-apt install -y git curl
+sudo apt install -y git curl
 
 # Create user if doesn't exist
 if ! id -u "$BOT_USER" &>/dev/null; then
   echo "[+] Creating $BOT_USER user"
-  useradd -m -s /bin/bash "$BOT_USER"
+  sudo useradd -m -s /bin/bash "$BOT_USER"
 fi
 
 # Setup Noxhime project structure
@@ -88,7 +113,7 @@ cd "$BOT_PATH"
 
 # Install project dependencies
 echo "[+] Installing Node.js dependencies"
-sudo -u "$BOT_USER" npm install --no-fund --legacy-peer-deps
+sudo -u "$BOT_USER" bash -c 'export NVM_DIR="$HOME/.nvm"; [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"; nvm use 18; npm install --no-fund --legacy-peer-deps'
 
 # Create directories for PID file and logs
 mkdir -p "$(dirname "$BOT_PATH/noxhime.pid")"

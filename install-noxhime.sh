@@ -83,35 +83,21 @@ install_prerequisites() {
     status "Debian/Ubuntu system detected"
     status "Installing required tools..."
     sudo apt-get update
-    
-    # For Ubuntu 24.04 and newer, use the NodeSource repository for newer Node.js
-    if [ -f /etc/os-release ]; then
-      . /etc/os-release
-      if [[ "$ID" == "ubuntu" && "${VERSION_ID%%.*}" -ge 24 ]]; then
-        status "Ubuntu 24.04 or later detected, using NodeSource repository..."
-        sudo apt-get install -y ca-certificates curl gnupg
-        sudo mkdir -p /etc/apt/keyrings
-        curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
-        echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
-        sudo apt-get update
-      fi
-    fi
-    
-    sudo apt-get install -y git curl wget nodejs npm sqlite3 build-essential
+    sudo apt-get install -y git curl wget sqlite3 build-essential
   elif command_exists yum; then
     status "RHEL/CentOS system detected"
     status "Installing required tools..."
-    sudo yum install -y git curl wget nodejs npm sqlite3
+    sudo yum install -y git curl wget sqlite3
   elif command_exists pacman; then
     status "Arch Linux detected"
     status "Installing required tools..."
-    sudo pacman -Sy git curl wget nodejs npm sqlite3 base-devel --noconfirm
+    sudo pacman -Sy git curl wget sqlite3 base-devel --noconfirm
   elif command_exists brew; then
     status "macOS detected"
     status "Installing required tools..."
-    brew install git curl nodejs npm sqlite3
+    brew install git curl sqlite3
   else
-    warn "Unsupported package manager. Please manually install: git, curl, nodejs, npm, sqlite3"
+    warn "Unsupported package manager. Please manually install: git, curl, sqlite3"
     read -p "Continue anyway? (y/n) " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -119,9 +105,19 @@ install_prerequisites() {
     fi
   fi
   
+  # Install NVM and Node.js 18
+  export NVM_DIR="$HOME/.nvm"
+  if [ ! -d "$NVM_DIR" ]; then
+    status "Installing NVM..."
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+  fi
+  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+  nvm install 18
+  nvm use 18
+
   # Install global Node.js packages with version controls
   status "Installing TypeScript and PM2..."
-  sudo npm install -g typescript@latest ts-node@latest pm2@latest --no-fund --no-audit
+  npm install -g typescript@latest ts-node@latest pm2@latest --no-fund --no-audit
   
   success "Prerequisites installed successfully!"
 }
@@ -466,14 +462,23 @@ MIDNIGHT_PURPLE='\033[38;5;92m'
 clear
 echo -e "${BOLD}${MIDNIGHT_PURPLE}"
 cat << "EOF"
- _   _            _     _                 ____        _   
-| \ | | _____  __| |__ (_)_ __ ___   ___ | __ )  ___ | |_ 
-|  \| |/ _ \ \/ /| '_ \| | '_ ` _ \ / _ \|  _ \ / _ \| __|
-| |\  | (_) >  < | | | | | | | | | |  __/| |_) | (_) | |_ 
-|_| \_|\___/_/\_\|_| |_|_|_| |_| |_|\___||____/ \___/ \__|
-                                                           
+╔══════════════════════════════════════════════════════════════╗
+║  ███╗   ██╗ ██████╗ ██╗  ██╗██╗  ██╗██╗███╗   ███╗███████╗  ║
+║  ████╗  ██║██╔═══██╗╚██╗██╔╝██║  ██║██║████╗ ████║██╔════╝  ║
+║  ██╔██╗ ██║██║   ██║ ╚███╔╝ ███████║██║██╔████╔██║█████╗    ║
+║  ██║╚██╗██║██║   ██║ ██╔██╗ ██╔══██║██║██║╚██╔╝██║██╔══╝    ║
+║  ██║ ╚████║╚██████╔╝██╔╝ ██╗██║  ██║██║██║ ╚═╝ ██║███████╗  ║
+║  ╚═╝  ╚═══╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝╚═╝     ╚═╝╚══════╝  ║
+║                                                              ║
+║      ██████╗  ██████╗ ████████╗    ██╗   ██╗██████╗         ║
+║      ██╔══██╗██╔═══██╗╚══██╔══╝    ██║   ██║╚════██╗        ║
+║      ██████╔╝██║   ██║   ██║       ██║   ██║ █████╔╝        ║
+║      ██╔══██╗██║   ██║   ██║       ╚██╗ ██╔╝██╔═══╝         ║
+║      ██████╔╝╚██████╔╝   ██║        ╚████╔╝ ███████╗        ║
+║      ╚═════╝  ╚═════╝    ╚═╝         ╚═══╝  ╚══════╝        ║
+╚══════════════════════════════════════════════════════════════╝
 EOF
-echo -e "${MIDNIGHT_PURPLE}                                      Made with 💜 by NullMeDev${NC}"
+echo -e "${MIDNIGHT_PURPLE}                     Made with 💜 by NullMeDev${NC}"
 echo
 echo -e "${BOLD}Enhanced Installation Script with IP/Port Whitelisting${NC}"
 echo

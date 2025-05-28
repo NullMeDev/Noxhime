@@ -18,35 +18,44 @@ if (!fs.existsSync(dataDir)) {
 const db = new sqlite3.Database(DB_PATH);
 
 // Create a module exports object
-const dbModule = {};
+// Database helper functions interface
+interface DatabaseModule {
+  run: (sql: string, params?: any[]) => Promise<any>;
+  get: (sql: string, params?: any[]) => Promise<any>;
+  all: (sql: string, params?: any[]) => Promise<any[]>;
+}
 
-// Database helper functions
-dbModule.run = (sql: string, params: any[] = []): Promise<any> => {
-  return new Promise((resolve, reject) => {
-    db.run(sql, params, function(err) {
-      if (err) return reject(err);
-      resolve(this);
+const dbModule: DatabaseModule = {
+  run: (sql: string, params: any[] = []): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      db.run(sql, params, function(err) {
+        if (err) return reject(err);
+        resolve(this);
+      });
     });
-  });
+  },
+
+  get: (sql: string, params: any[] = []): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      db.get(sql, params, (err, row) => {
+        if (err) return reject(err);
+        resolve(row);
+      });
+    });
+  },
+
+  all: (sql: string, params: any[] = []): Promise<any[]> => {
+    return new Promise((resolve, reject) => {
+      db.all(sql, params, (err, rows) => {
+        if (err) return reject(err);
+        resolve(rows);
+      });
+    });
+  }
 };
 
-dbModule.get = (sql: string, params: any[] = []): Promise<any> => {
-  return new Promise((resolve, reject) => {
-    db.get(sql, params, (err, row) => {
-      if (err) return reject(err);
-      resolve(row);
-    });
-  });
-};
-
-dbModule.all = (sql: string, params: any[] = []): Promise<any[]> => {
-  return new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows) => {
-      if (err) return reject(err);
-      resolve(rows);
-    });
-  });
-};
+// Export database functions
+export const { run, get, all } = dbModule;
 
 // Initialize database tables
 export async function initializeDatabase(): Promise<boolean> {

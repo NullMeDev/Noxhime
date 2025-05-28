@@ -69,6 +69,7 @@ class ApiServer {
         this.app.use(express_1.default.json());
         // Load and apply whitelist configuration if enabled
         const whitelistEnabled = process.env.WHITELIST_ENABLED === 'true';
+        // Apply whitelist middleware before API key authentication
         if (whitelistEnabled) {
             const whitelistConfigPath = process.env.WHITELIST_CONFIG_PATH || './config/whitelist.json';
             const whitelistConfig = (0, whitelist_1.loadWhitelistConfig)(whitelistConfigPath);

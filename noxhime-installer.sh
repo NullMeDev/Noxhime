@@ -79,17 +79,17 @@ install_prerequisites() {
     status "Debian/Ubuntu system detected"
     status "Installing required tools..."
     sudo apt-get update
-    sudo apt-get install -y git curl wget nodejs npm sqlite3 build-essential
+    sudo apt-get install -y git curl wget sqlite3 build-essential
   elif command_exists yum; then
     status "RHEL/CentOS system detected"
     status "Installing required tools..."
-    sudo yum install -y git curl wget nodejs npm sqlite3
+    sudo yum install -y git curl wget sqlite3
   elif command_exists pacman; then
     status "Arch Linux detected"
     status "Installing required tools..."
-    sudo pacman -Sy git curl wget nodejs npm sqlite3 base-devel --noconfirm
+    sudo pacman -Sy git curl wget sqlite3 base-devel --noconfirm
   else
-    warn "Unsupported package manager. Please manually install: git, curl, nodejs, npm, sqlite3"
+    warn "Unsupported package manager. Please manually install: git, curl, sqlite3"
     read -p "Continue anyway? (y/n) " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -97,9 +97,19 @@ install_prerequisites() {
     fi
   fi
   
+  # Install NVM and Node.js 18
+  export NVM_DIR="$HOME/.nvm"
+  if [ ! -d "$NVM_DIR" ]; then
+    status "Installing NVM..."
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+  fi
+  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+  nvm install 18
+  nvm use 18
+
   # Install global Node.js packages
   status "Installing TypeScript and PM2..."
-  sudo npm install -g typescript ts-node pm2
+  npm install -g typescript@latest ts-node@latest pm2@latest --no-fund --no-audit
   
   success "Prerequisites installed successfully"
 }

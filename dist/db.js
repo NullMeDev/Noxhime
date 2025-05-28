@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.all = exports.get = exports.run = void 0;
 exports.initializeDatabase = initializeDatabase;
 exports.logEvent = logEvent;
 exports.logAlert = logAlert;
@@ -31,36 +32,37 @@ if (!fs_1.default.existsSync(dataDir)) {
 }
 // Initialize database
 const db = new sqlite3_1.default.Database(DB_PATH);
-// Create a module exports object
-const dbModule = {};
-// Database helper functions
-dbModule.run = (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-        db.run(sql, params, function (err) {
-            if (err)
-                return reject(err);
-            resolve(this);
+const dbModule = {
+    run: (sql, params = []) => {
+        return new Promise((resolve, reject) => {
+            db.run(sql, params, function (err) {
+                if (err)
+                    return reject(err);
+                resolve(this);
+            });
         });
-    });
-};
-dbModule.get = (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-        db.get(sql, params, (err, row) => {
-            if (err)
-                return reject(err);
-            resolve(row);
+    },
+    get: (sql, params = []) => {
+        return new Promise((resolve, reject) => {
+            db.get(sql, params, (err, row) => {
+                if (err)
+                    return reject(err);
+                resolve(row);
+            });
         });
-    });
-};
-dbModule.all = (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-        db.all(sql, params, (err, rows) => {
-            if (err)
-                return reject(err);
-            resolve(rows);
+    },
+    all: (sql, params = []) => {
+        return new Promise((resolve, reject) => {
+            db.all(sql, params, (err, rows) => {
+                if (err)
+                    return reject(err);
+                resolve(rows);
+            });
         });
-    });
+    }
 };
+// Export database functions
+exports.run = dbModule.run, exports.get = dbModule.get, exports.all = dbModule.all;
 // Initialize database tables
 async function initializeDatabase() {
     try {
@@ -70,7 +72,7 @@ async function initializeDatabase() {
         const statements = schemaSQL.split(';').filter(stmt => stmt.trim());
         for (const stmt of statements) {
             if (stmt.trim()) {
-                await run(stmt);
+                await (0, exports.run)(stmt);
             }
         }
         console.log('Database initialized successfully');
@@ -84,7 +86,7 @@ async function initializeDatabase() {
 // Log an event
 async function logEvent(type, description) {
     try {
-        await run('INSERT INTO events (type, description) VALUES (?, ?)', [type, description]);
+        await (0, exports.run)('INSERT INTO events (type, description) VALUES (?, ?)', [type, description]);
         return true;
     }
     catch (error) {
@@ -95,7 +97,7 @@ async function logEvent(type, description) {
 // Log an alert
 async function logAlert(severity, message) {
     try {
-        await run('INSERT INTO alerts (severity, message) VALUES (?, ?)', [severity, message]);
+        await (0, exports.run)('INSERT INTO alerts (severity, message) VALUES (?, ?)', [severity, message]);
         return true;
     }
     catch (error) {
@@ -106,7 +108,7 @@ async function logAlert(severity, message) {
 // Log an intrusion attempt
 async function logIntrusion(ip, method) {
     try {
-        await run('INSERT INTO intrusions (ip, method) VALUES (?, ?)', [ip, method]);
+        await (0, exports.run)('INSERT INTO intrusions (ip, method) VALUES (?, ?)', [ip, method]);
         return true;
     }
     catch (error) {
@@ -117,7 +119,7 @@ async function logIntrusion(ip, method) {
 // Log an authentication attempt
 async function logAuthAttempt(username, sourceIp, success) {
     try {
-        await run('INSERT INTO auth_attempts (username, source_ip, success) VALUES (?, ?, ?)', [username, sourceIp, success ? 1 : 0]);
+        await (0, exports.run)('INSERT INTO auth_attempts (username, source_ip, success) VALUES (?, ?, ?)', [username, sourceIp, success ? 1 : 0]);
         return true;
     }
     catch (error) {
@@ -128,7 +130,7 @@ async function logAuthAttempt(username, sourceIp, success) {
 // Get recent events
 async function getRecentEvents(limit = 10) {
     try {
-        return await all('SELECT * FROM events ORDER BY timestamp DESC LIMIT ?', [limit]);
+        return await (0, exports.all)('SELECT * FROM events ORDER BY timestamp DESC LIMIT ?', [limit]);
     }
     catch (error) {
         console.error('Error getting recent events:', error);
@@ -138,7 +140,7 @@ async function getRecentEvents(limit = 10) {
 // Get recent alerts
 async function getRecentAlerts(limit = 10) {
     try {
-        return await all('SELECT * FROM alerts ORDER BY created_at DESC LIMIT ?', [limit]);
+        return await (0, exports.all)('SELECT * FROM alerts ORDER BY created_at DESC LIMIT ?', [limit]);
     }
     catch (error) {
         console.error('Error getting recent alerts:', error);
@@ -149,7 +151,7 @@ async function getRecentAlerts(limit = 10) {
 // Log a sentinel incident
 async function logSentinelIncident(severity, source, description, details) {
     try {
-        await run('INSERT INTO sentinel_incidents (severity, source, description, details) VALUES (?, ?, ?, ?)', [severity, source, description, details || '']);
+        await (0, exports.run)('INSERT INTO sentinel_incidents (severity, source, description, details) VALUES (?, ?, ?, ?)', [severity, source, description, details || '']);
         return true;
     }
     catch (error) {
@@ -160,7 +162,7 @@ async function logSentinelIncident(severity, source, description, details) {
 // Get recent sentinel incidents
 async function getRecentIncidents(limit = 10) {
     try {
-        return await all('SELECT * FROM sentinel_incidents ORDER BY created_at DESC LIMIT ?', [limit]);
+        return await (0, exports.all)('SELECT * FROM sentinel_incidents ORDER BY created_at DESC LIMIT ?', [limit]);
     }
     catch (error) {
         console.error('Error getting recent incidents:', error);
@@ -171,14 +173,14 @@ async function getRecentIncidents(limit = 10) {
 async function trackSuspiciousIP(ip) {
     try {
         // Check if IP exists
-        const existingIP = await get('SELECT * FROM suspicious_ips WHERE ip = ?', [ip]);
+        const existingIP = await (0, exports.get)('SELECT * FROM suspicious_ips WHERE ip = ?', [ip]);
         if (existingIP) {
             // Update existing IP
-            await run('UPDATE suspicious_ips SET incident_count = incident_count + 1, last_seen = CURRENT_TIMESTAMP WHERE ip = ?', [ip]);
+            await (0, exports.run)('UPDATE suspicious_ips SET incident_count = incident_count + 1, last_seen = CURRENT_TIMESTAMP WHERE ip = ?', [ip]);
         }
         else {
             // Insert new IP
-            await run('INSERT INTO suspicious_ips (ip) VALUES (?)', [ip]);
+            await (0, exports.run)('INSERT INTO suspicious_ips (ip) VALUES (?)', [ip]);
         }
         return true;
     }
@@ -190,7 +192,7 @@ async function trackSuspiciousIP(ip) {
 // Save service status
 async function saveServiceStatus(serviceName, status, memoryUsage, cpuUsage, uptime) {
     try {
-        await run('INSERT INTO service_status (service_name, status, memory_usage, cpu_usage, uptime) VALUES (?, ?, ?, ?, ?)', [serviceName, status, memoryUsage || null, cpuUsage || null, uptime || null]);
+        await (0, exports.run)('INSERT INTO service_status (service_name, status, memory_usage, cpu_usage, uptime) VALUES (?, ?, ?, ?, ?)', [serviceName, status, memoryUsage || null, cpuUsage || null, uptime || null]);
         return true;
     }
     catch (error) {
@@ -201,7 +203,7 @@ async function saveServiceStatus(serviceName, status, memoryUsage, cpuUsage, upt
 // Log backup information
 async function logBackup(backupPath, remotePath, sizeBytes, status) {
     try {
-        await run('INSERT INTO backups (backup_path, remote_path, size_bytes, status) VALUES (?, ?, ?, ?)', [backupPath, remotePath, sizeBytes, status]);
+        await (0, exports.run)('INSERT INTO backups (backup_path, remote_path, size_bytes, status) VALUES (?, ?, ?, ?)', [backupPath, remotePath, sizeBytes, status]);
         return true;
     }
     catch (error) {
@@ -213,7 +215,7 @@ async function logBackup(backupPath, remotePath, sizeBytes, status) {
 // Get current bot mood
 async function getCurrentMood() {
     try {
-        return await get('SELECT * FROM mood_states WHERE ended_at IS NULL ORDER BY started_at DESC LIMIT 1');
+        return await (0, exports.get)('SELECT * FROM mood_states WHERE ended_at IS NULL ORDER BY started_at DESC LIMIT 1');
     }
     catch (error) {
         console.error('Error getting current mood:', error);
@@ -224,9 +226,9 @@ async function getCurrentMood() {
 async function setMood(mood, triggerEvent, intensity) {
     try {
         // End current mood if exists
-        await run('UPDATE mood_states SET ended_at = CURRENT_TIMESTAMP WHERE ended_at IS NULL');
+        await (0, exports.run)('UPDATE mood_states SET ended_at = CURRENT_TIMESTAMP WHERE ended_at IS NULL');
         // Set new mood
-        await run('INSERT INTO mood_states (mood, trigger_event, intensity) VALUES (?, ?, ?)', [mood, triggerEvent, intensity]);
+        await (0, exports.run)('INSERT INTO mood_states (mood, trigger_event, intensity) VALUES (?, ?, ?)', [mood, triggerEvent, intensity]);
         return true;
     }
     catch (error) {
