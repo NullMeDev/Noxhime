@@ -1,34 +1,40 @@
 {
   "name": "noxhime-bot",
   "version": "3.0.0",
+  "engines": {
+    "node": "18.x"
+  },
   "main": "dist/index.js",
   "scripts": {
     "start": "ts-node src/index.ts",
-    "build": "tsc",
+    "build": "tsc && npm run build:web",
     "monitor": "node dist/monitor-cli.js",
+    "build:web": "npx tailwindcss -i ./web/src/styles.css -o ./web/public/styles.css",
     "test-alert": "curl -X POST http://localhost:5000/alert -H 'Content-Type: application/json' -d '{\"title\": \"Test Alert\", \"body\": \"This is a test alert from the command line\", \"severity\": \"info\"}'"
   },
   "devDependencies": {
     "@types/express": "^5.0.2",
-    "@types/node": "^22.15.23",
+    "@types/node": "^18.18.0",
+    "tailwindcss": "^3.3.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
   },
   "dependencies": {
     "@types/cors": "^2.8.17",
+    "@types/jsonwebtoken": "^9.0.2",
+    "@types/socket.io": "^3.0.2",
+    "@types/bcrypt": "^5.0.2",
     "cors": "^2.8.5",
     "discord.js": "^14.19.3",
     "dotenv": "^16.3.1",
     "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.1",
     "openai": "^4.24.1",
+    "socket.io": "^4.7.1",
     "sqlite3": "^5.1.6",
-    "node-ssh": "^13.2.0",
     "axios": "^1.7.7",
-    "child_process": "^1.0.2",
-    "fs-extra": "^11.2.0",
     "node-cron": "^3.0.3",
-    "iptables": "0.0.4",
-    "netstat": "0.0.2"
+    "bcrypt": "^5.1.1"
   },
   "description": "Autonomous Discord bot with system monitoring and OpenAI integration.",
   "repository": {

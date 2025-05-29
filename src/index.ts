@@ -15,6 +15,7 @@ import {
 import { getSentinel } from './sentinel';
 import { getPersonalityCore, EventType } from './personality';
 import { handleWhitelistCommands } from './whitelist-commands';
+import { getBioLock, BioLockState } from './biolock';
 
 // Use require for modules with export issues
 const api = require('./api');
@@ -77,12 +78,12 @@ async function logEvent(type: string, description: string): Promise<boolean> {
 }
 
 const NOTIFY_CHANNEL_ID = process.env.NOTIFY_CHANNEL_ID || '';
-const BIOLOCK_ENABLED = false; // Disabled - bot is now open for all users
-const BIOLOCK_PASSPHRASE = process.env.BIOLOCK_PASSPHRASE;
+const BIOLOCK_ENABLED = process.env.BIOLOCK_ENABLED === 'true'; // Enable BioLock v2
 const BIOLOCK_OVERRIDE_KEY = process.env.BIOLOCK_OVERRIDE_KEY;
 const COMMAND_PREFIX = process.env.COMMAND_PREFIX || '!';
 const MONIT_ENABLED = process.env.MONIT_ENABLED === 'true';
 const MONIT_PORT = parseInt(process.env.MONIT_PORT || '5000');
+const API_PORT = parseInt(process.env.API_PORT || '3000');
 const PID_FILE_PATH = process.env.PID_FILE_PATH || '/home/nulladmin/noxhime-bot/noxhime.pid';
 const SELF_HEALING_ENABLED = process.env.SELF_HEALING_ENABLED === 'true';
 const SYSTEM_STATS_INTERVAL = parseInt(process.env.SYSTEM_STATS_INTERVAL || '3600000'); // Default: 1 hour
@@ -91,14 +92,22 @@ const SYSTEM_STATS_INTERVAL = parseInt(process.env.SYSTEM_STATS_INTERVAL || '360
 const SENTINEL_ENABLED = process.env.SENTINEL_ENABLED === 'true';
 const SENTINEL_CHECK_INTERVAL = parseInt(process.env.SENTINEL_CHECK_INTERVAL || '60000'); // Default: 1 minute
 const RCLONE_BACKUP_ENABLED = process.env.RCLONE_BACKUP_ENABLED === 'true';
+const API_ENABLED = process.env.API_ENABLED === 'true';
+const API_KEYS = process.env.API_KEYS?.split(',') || [];
 const RCLONE_REMOTE = process.env.RCLONE_REMOTE || 'gdrive:NoxhimeBackups';
 const RCLONE_SCHEDULE = process.env.RCLONE_SCHEDULE || '0 0 * * *'; // Default: Daily at midnight
 
-// Phase 5: Personality Core Configuration
-const PERSONALITY_ENABLED = process.env.PERSONALITY_ENABLED === 'true';
-const DEFAULT_MOOD = process.env.DEFAULT_MOOD || 'focused';
+  // Phase 5: Personality Core Configuration
+  const PERSONALITY_ENABLED = process.env.PERSONALITY_ENABLED === 'true';
+  const DEFAULT_MOOD = process.env.DEFAULT_MOOD || 'focused';
+  
+  // Phase 6: BioLock v2 Configuration
+  const BIOLOCK_SESSION_TIMEOUT = parseInt(process.env.BIOLOCK_SESSION_TIMEOUT || '60'); // Default: 60 minutes
 
-let bioLocked = false; // BioLock disabled - bot is now open for all users
+  // Phase 7: Web Dashboard Configuration
+  const DASHBOARD_URL = process.env.DASHBOARD_URL || `http://localhost:${API_PORT}`;
+
+// BioLock v2 will be initialized in the ready event
 
 const client = new Client({
   intents: [
@@ -321,7 +330,18 @@ client.once('ready', async () => {
     console.log('No notify channel ID configured');
   }
 
-  console.log('Bot initialization complete with Sentinel Intelligence and Personality Core');
+  // Phase 6: Initialize BioLock v2
+  if (BIOLOCK_ENABLED) {
+    try {
+      const biolock = getBioLock(client);
+      console.log('BioLock v2 security system initialized');
+      await logEvent('SYSTEM', 'BioLock v2 security system initialized');
+    } catch (error) {
+      console.error('Error initializing BioLock v2:', error);
+    }
+  }
+
+  console.log('Bot initialization complete with Sentinel Intelligence, Personality Core, and BioLock v2');
 });
 
 client.on('messageCreate', async (message) => {
@@ -331,8 +351,7 @@ client.on('messageCreate', async (message) => {
   const lowerContent = content.toLowerCase();
   const isTextChannel = message.channel.type === ChannelType.GuildText;
 
-  // BioLock System - DISABLED (bot is now open for all users)
-  // All commands are now available to everyone
+  // BioLock v2 System - User-level protection for sensitive commands
 
   // Command handling
   if (content.startsWith(COMMAND_PREFIX) && isTextChannel) {
@@ -363,6 +382,7 @@ client.on('messageCreate', async (message) => {
           `\`${COMMAND_PREFIX}system\` – display system status and stats`,
           `\`${COMMAND_PREFIX}services\` – check status of system services`,
           `\`${COMMAND_PREFIX}mood\` – see my current emotional state`,
+          `\`${COMMAND_PREFIX}link\` – get access to web dashboard`,
           `\`${COMMAND_PREFIX}restart\` – restart the bot`,
           `\`${COMMAND_PREFIX}heal\` – trigger self-healing routine`,
           `\`${COMMAND_PREFIX}logs <type> <count>\` – view recent logs`,
@@ -371,6 +391,17 @@ client.on('messageCreate', async (message) => {
           `\`${COMMAND_PREFIX}incidents\` – view security incidents`,
           `\`${COMMAND_PREFIX}whitelist <action>\` – manage server whitelisting`
         ];
+        
+        // Add BioLock commands if enabled
+        if (BIOLOCK_ENABLED) {
+          const biolockCommands = [
+            `\`${COMMAND_PREFIX}lock\` – lock your BioLock session`,
+            `\`${COMMAND_PREFIX}unlock\` – authenticate with BioLock`,
+            `\`${COMMAND_PREFIX}override [passphrase]\` – emergency override`,
+            `\`${COMMAND_PREFIX}link\` – get web dashboard access token`
+          ];
+          commands.push(...biolockCommands);
+        }
         
         // Use personality system if enabled
         if (PERSONALITY_ENABLED) {
@@ -414,6 +445,15 @@ client.on('messageCreate', async (message) => {
         break;
         
       case 'restart':
+        // Check BioLock authentication if enabled
+        if (BIOLOCK_ENABLED) {
+          const biolock = getBioLock(client);
+          const isAllowed = await biolock.isCommandAllowed(message, 'restart');
+          if (!isAllowed) {
+            return; // The BioLock middleware already sent a message
+          }
+        }
+
         const auditChannel = NOTIFY_CHANNEL_ID
           ? await client.channels.fetch(NOTIFY_CHANNEL_ID)
           : null;
@@ -428,8 +468,99 @@ client.on('messageCreate', async (message) => {
         break;
         
       case 'lock':
-        // Lock functionality removed - bot is now open for all users
-        await message.reply("Lock functionality has been removed. This bot is now freely available to all users!");
+        if (BIOLOCK_ENABLED) {
+          const biolock = getBioLock(client);
+          await biolock.handleLockCommand(message);
+        } else {
+          await message.reply("BioLock is not enabled on this bot.");
+        }
+        break;
+        
+      case 'unlock':
+        if (BIOLOCK_ENABLED) {
+          const biolock = getBioLock(client);
+          await biolock.handleUnlockCommand(message);
+        } else {
+          await message.reply("BioLock is not enabled on this bot.");
+        }
+        break;
+        
+      case 'override':
+        if (BIOLOCK_ENABLED) {
+          const biolock = getBioLock(client);
+          await biolock.handleOverrideCommand(message, args);
+        } else {
+          await message.reply("BioLock is not enabled on this bot.");
+        }
+        break;
+        
+      case 'link':
+        try {
+          // Check if API server is enabled
+          if (!API_ENABLED) {
+            await message.reply("Web dashboard is not enabled on this server.");
+            return;
+          }
+          
+          // Check BioLock authentication if enabled
+          // Note: We may or may not want to require BioLock for this command
+          // If we do require it, uncomment the following code:
+          /*
+          if (BIOLOCK_ENABLED) {
+            const biolock = getBioLock(client);
+            const isAllowed = await biolock.isCommandAllowed(message, 'link');
+            if (!isAllowed) {
+              return; // The BioLock middleware already sent a message
+            }
+          }
+          */
+          
+          // Reply in the channel
+          await message.reply("I'm sending you a link token via DM. Please check your private messages.");
+          
+          try {
+            // Generate a one-time token via API
+            const apiUrl = `http://localhost:${API_PORT}/api/auth/create-link`;
+            const apiKey = API_KEYS[0]; // Use the first API key
+            
+            const axios = require('axios');
+            const response = await axios.post(apiUrl, {
+              discordId: message.author.id,
+              apiKey: apiKey
+            });
+            
+            if (response.data && response.data.token) {
+              // Create DM channel
+              const dmChannel = await message.author.createDM();
+              
+              // Create embed for token
+              const embed = new EmbedBuilder()
+                .setTitle('🔗 Web Dashboard Access')
+                .setDescription('Here is your one-time access token for the web dashboard. This token will expire in 30 minutes.')
+                .setColor(0x3498DB)
+                .addFields(
+                  { name: 'Token', value: `\`${response.data.token}\`` },
+                  { name: 'Instructions', value: 'Go to the dashboard, paste this token, and click Authenticate.' }
+                )
+                .setTimestamp()
+                .setFooter({ text: 'Noxhime Web Dashboard' });
+              
+              // Send token via DM
+              await dmChannel.send({ embeds: [embed] });
+              
+              // Log the link generation
+              await logEvent('WEB_ACCESS', `User ${message.author.username} requested dashboard access token`);
+            } else {
+              throw new Error('Invalid API response');
+            }
+          } catch (dmError) {
+            console.error('Error sending DM with token:', dmError);
+            await message.reply('Could not send token via DM. Please ensure your DMs are open and try again.');
+          }
+        } catch (error) {
+          console.error('Error generating link token:', error);
+          await message.reply('An error occurred while generating your access token. Please try again later.');
+        }
         break;
         
       case 'system':
@@ -460,6 +591,15 @@ client.on('messageCreate', async (message) => {
         break;
         
       case 'heal':
+        // Check BioLock authentication if enabled
+        if (BIOLOCK_ENABLED) {
+          const biolock = getBioLock(client);
+          const isAllowed = await biolock.isCommandAllowed(message, 'heal');
+          if (!isAllowed) {
+            return; // The BioLock middleware already sent a message
+          }
+        }
+
         if (SELF_HEALING_ENABLED) {
           await message.channel.send('🔄 Initiating self-healing routine...');
           const selfHeal = setupSelfHealing(logEvent);
@@ -681,6 +821,15 @@ client.on('messageCreate', async (message) => {
         break;
       
       case 'backup':
+        // Check BioLock authentication if enabled
+        if (BIOLOCK_ENABLED) {
+          const biolock = getBioLock(client);
+          const isAllowed = await biolock.isCommandAllowed(message, 'backup');
+          if (!isAllowed) {
+            return; // The BioLock middleware already sent a message
+          }
+        }
+
         if (RCLONE_BACKUP_ENABLED && SENTINEL_ENABLED) {
           await message.channel.send('🔄 Initiating manual backup process...');
           
@@ -715,6 +864,15 @@ client.on('messageCreate', async (message) => {
         break;
       
       case 'sentinel':
+        // Check BioLock authentication if enabled
+        if (BIOLOCK_ENABLED) {
+          const biolock = getBioLock(client);
+          const isAllowed = await biolock.isCommandAllowed(message, 'sentinel');
+          if (!isAllowed) {
+            return; // The BioLock middleware already sent a message
+          }
+        }
+
         const action = args[0]?.toLowerCase();
         
         if (SENTINEL_ENABLED) {
@@ -790,6 +948,15 @@ client.on('messageCreate', async (message) => {
         break;
         
       case 'whitelist':
+        // Check BioLock authentication if enabled
+        if (BIOLOCK_ENABLED) {
+          const biolock = getBioLock(client);
+          const isAllowed = await biolock.isCommandAllowed(message, 'whitelist');
+          if (!isAllowed) {
+            return; // The BioLock middleware already sent a message
+          }
+        }
+
         // Handle whitelist commands through the dedicated handler
         await handleWhitelistCommands(message, args);
         break;

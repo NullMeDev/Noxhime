@@ -1,5 +1,40 @@
 -- Noxhime DB Schema (Phase 4 - Sentinel Intelligence)
 
+
+-- Phase 6: BioLock v2 Tables
+CREATE TABLE IF NOT EXISTS biolock_users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    discord_id TEXT NOT NULL UNIQUE,
+    passphrase_hash TEXT NOT NULL,
+    last_auth_timestamp DATETIME,
+    device_info TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS biolock_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    session_state TEXT NOT NULL CHECK(session_state IN ('locked', 'pending', 'unlocked', 'override')),
+    start_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    end_time DATETIME,
+    session_token TEXT,
+    ip_address TEXT,
+    device_fingerprint TEXT,
+    FOREIGN KEY (user_id) REFERENCES biolock_users(id)
+);
+
+CREATE TABLE IF NOT EXISTS biolock_audit (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    event_type TEXT NOT NULL,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    success BOOLEAN DEFAULT 0,
+    ip_address TEXT,
+    device_info TEXT,
+    details TEXT,
+    FOREIGN KEY (user_id) REFERENCES biolock_users(id)
+);
 CREATE TABLE IF NOT EXISTS intrusions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     ip TEXT NOT NULL,

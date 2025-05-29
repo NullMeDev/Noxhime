@@ -1,0 +1,14 @@
+{
+  "version": "2.0.0",
+  "description": "BioLock v2 - User-level authentication system",
+  "users": [],
+  "config": {
+    "enabled": true,
+    "session_timeout_minutes": 60,
+    "max_failed_attempts": 5,
+    "lockout_duration_minutes": 15,
+    "override_enabled": true,
+    "audit_webhook_url": ""
+  }
+}
+
