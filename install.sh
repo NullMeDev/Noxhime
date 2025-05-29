@@ -36,6 +36,12 @@ SETUP_SYSTEMD=true
 VERBOSE_OUTPUT=false
 USE_CURRENT_DIR=false
 
+# Check if running as root
+IS_ROOT=false
+if [ "$(id -u)" -eq 0 ]; then
+    IS_ROOT=true
+fi
+
 # Utility functions
 log() {
   echo -e "${BLUE}[INFO]${NC} $1"
@@ -63,6 +69,15 @@ section() {
 # Function to check if a command exists
 command_exists() {
   command -v "$1" &>/dev/null
+}
+
+# Function to run commands with or without sudo depending on if we're root
+run_with_sudo() {
+  if [ "$IS_ROOT" = true ]; then
+    "$@"
+  else
+    sudo "$@"
+  fi
 }
 
 # Function to check Ubuntu version
@@ -97,9 +112,9 @@ install_prerequisites() {
 
   log "Updating package lists..."
   if $VERBOSE_OUTPUT; then
-    sudo apt-get update
+    run_with_sudo apt-get update
   else
-    sudo apt-get update -qq
+    run_with_sudo apt-get update -qq
   fi
 
   # Check and install required packages
@@ -117,9 +132,9 @@ install_prerequisites() {
   if [ ${#PACKAGES_TO_INSTALL[@]} -gt 0 ]; then
     log "Installing required packages: ${PACKAGES_TO_INSTALL[*]}"
     if $VERBOSE_OUTPUT; then
-      sudo apt-get install -y "${PACKAGES_TO_INSTALL[@]}"
+      run_with_sudo apt-get install -y "${PACKAGES_TO_INSTALL[@]}"
     else
-      sudo apt-get install -y -qq "${PACKAGES_TO_INSTALL[@]}"
+      run_with_sudo apt-get install -y -qq "${PACKAGES_TO_INSTALL[@]}"
     fi
   else
     success "All required system packages are already installed."
@@ -156,19 +171,23 @@ install_nodejs() {
   # First, check if NodeSource repository is already configured
   if [ -f /etc/apt/sources.list.d/nodesource.list ]; then
     log "NodeSource repository is already configured, updating it..."
-    sudo rm /etc/apt/sources.list.d/nodesource.list
+    run_with_sudo rm /etc/apt/sources.list.d/nodesource.list
   fi
   
   # Add Node.js 18.x repository
   log "Adding NodeSource repository for Node.js 18.x..."
-  curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+  if [ "$IS_ROOT" = true ]; then
+    curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+  else
+    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+  fi
 
   # Install Node.js 18.x
   log "Installing Node.js 18.x..."
   if $VERBOSE_OUTPUT; then
-    sudo apt-get install -y nodejs
+    run_with_sudo apt-get install -y nodejs
   else
-    sudo apt-get install -y -qq nodejs
+    run_with_sudo apt-get install -y -qq nodejs
   fi
 
   # Verify installation
@@ -186,7 +205,11 @@ install_nodejs() {
   for pkg in "${GLOBAL_PACKAGES[@]}"; do
     if ! npm list -g "$pkg" &>/dev/null; then
       log "Installing $pkg globally..."
-      npm install -g "$pkg" --no-fund --no-audit
+      if [ "$IS_ROOT" = true ]; then
+        npm install -g "$pkg" --no-fund --no-audit
+      else
+        sudo npm install -g "$pkg" --no-fund --no-audit
+      fi
     else
       log "Package $pkg is already installed globally, skipping."
     fi
@@ -199,6 +222,12 @@ install_nodejs() {
 # Note: This function assumes the repository files are already present
 setup_repository() {
   section "Setting Up Repository"
+
+  # Make INSTALL_DIR absolute if it's not already
+  if [[ ! "$INSTALL_DIR" = /* ]]; then
+    INSTALL_DIR="$(pwd)/${INSTALL_DIR}"
+    log "Using absolute path: $INSTALL_DIR"
+  fi
 
   # Check if the installation directory exists
   if [ ! -d "$INSTALL_DIR" ]; then
@@ -389,6 +418,12 @@ setup_systemd() {
   
   log "Creating systemd service file..."
   
+  # Determine the user for the service
+  SERVICE_USER=$(whoami)
+  if [ "$IS_ROOT" = true ] && [ -n "$SUDO_USER" ]; then
+    SERVICE_USER="$SUDO_USER"
+  fi
+  
   # Create systemd service file
   cat > noxhime-bot.service << EOL
 [Unit]
@@ -397,7 +432,7 @@ After=network.target
 
 [Service]
 Type=simple
-User=$(whoami)
+User=${SERVICE_USER}
 WorkingDirectory=${INSTALL_DIR}
 ExecStart=$(which node) ${INSTALL_DIR}/dist/index.js
 Restart=on-failure
@@ -413,9 +448,9 @@ EOL
   
   # Install systemd service
   log "Installing systemd service..."
-  sudo mv noxhime-bot.service /etc/systemd/system/
-  sudo systemctl daemon-reload
-  sudo systemctl enable noxhime-bot.service
+  run_with_sudo mv noxhime-bot.service /etc/systemd/system/
+  run_with_sudo systemctl daemon-reload
+  run_with_sudo systemctl enable noxhime-bot.service
   
   success "Systemd service installed and enabled!"
 }
@@ -445,7 +480,7 @@ start_bot() {
   
   if [ "$SETUP_SYSTEMD" = "true" ]; then
     log "Starting bot using systemd service..."
-    sudo systemctl start noxhime-bot
+    run_with_sudo systemctl start noxhime-bot
     
     # Check if service started successfully
     sleep 2
@@ -614,6 +649,11 @@ parse_arguments() {
   
   # Set default installation directory if not specified
   if [ -z "$INSTALL_DIR" ]; then
+    # If running as root with sudo, use the SUDO_USER's home directory
+    if [ "$IS_ROOT" = true ] && [ -n "$SUDO_USER" ]; then
+      DEFAULT_INSTALL_DIR="/home/$SUDO_USER/noxhime-bot"
+      log "Using SUDO_USER's home directory: $DEFAULT_INSTALL_DIR"
+    fi
     INSTALL_DIR="$DEFAULT_INSTALL_DIR"
   fi
 }
