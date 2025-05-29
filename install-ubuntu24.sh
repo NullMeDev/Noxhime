@@ -491,38 +491,38 @@ test_installation() {
   
   for file in "${FILES_TO_CHECK[@]}"; do
     if [ -f "$file" ]; then
-      log "✓ $file exists"
+      log "[+] $file exists"
     else
-      warn "✗ $file is missing"
+      warn "[-] $file is missing"
     fi
   done
   
   # Check if database exists
   if [ -f "data/noxhime.db" ]; then
-    log "✓ Database exists"
+    log "[+] Database exists"
   else
-    warn "✗ Database is missing"
+    warn "[-] Database is missing"
   fi
   
   # Check if environment file exists
   if [ -f ".env" ]; then
-    log "✓ Environment configuration exists"
+    log "[+] Environment configuration exists"
   else
-    warn "✗ Environment configuration is missing"
+    warn "[-] Environment configuration is missing"
   fi
   
   # Check if bot is running
   if [ "$SETUP_SYSTEMD" = "true" ]; then
     if systemctl is-active --quiet noxhime-bot; then
-      log "✓ Bot service is running"
+      log "[+] Bot service is running"
     else
-      warn "✗ Bot service is not running"
+      warn "[-] Bot service is not running"
     fi
   else
     if pm2 list | grep -q "noxhime"; then
-      log "✓ Bot process is running with pm2"
+      log "[+] Bot process is running with pm2"
     else
-      warn "✗ Bot process is not running with pm2"
+      warn "[-] Bot process is not running with pm2"
     fi
   fi
   
