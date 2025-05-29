@@ -26,8 +26,8 @@ NC='\033[0m' # No Color
 
 # Default installation paths
 DEFAULT_INSTALL_DIR="$HOME/noxhime-bot"
-# Note: This script assumes the repository has already been manually cloned/downloaded
-# and is present in the installation directory
+# IMPORTANT: This script requires the repository to be manually cloned/downloaded
+# prior to running this script. The script will NOT automatically clone the repository.
 
 # Installation options
 INSTALL_DIR=""
@@ -201,7 +201,7 @@ setup_repository() {
 
   # Check if the installation directory exists
   if [ ! -d "$INSTALL_DIR" ]; then
-    error "Installation directory $INSTALL_DIR does not exist. Please manually clone or download the repository first."
+    error "Installation directory $INSTALL_DIR does not exist. You must manually create this directory and clone/download the repository into it before running this script."
   fi
 
   # Change to the installation directory
@@ -216,11 +216,18 @@ setup_repository() {
   
   # Check if this is a git repository and offer to update it
   if [ -d .git ]; then
-    read -p "Would you like to update the repository with the latest changes? (Y/n): " -n 1 -r
+    warn "Updating the repository may require GitHub authentication if you haven't set up SSH keys or stored credentials."
+    warn "If you proceed with the update, you may be prompted for GitHub credentials."
+    read -p "Would you like to update the repository with the latest changes? (y/N): " -n 1 -r
     echo
-    if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
       log "Pulling latest changes from repository..."
-      git pull
+      log "Note: If prompted for GitHub credentials, you can press Ctrl+C to cancel the update."
+      # Set a timeout for git pull to avoid hanging indefinitely
+      timeout 30s git pull || {
+        warn "Failed to pull latest changes or operation timed out."
+        warn "Continuing with existing repository state."
+      }
     else
       log "Skipping repository update."
     fi
@@ -640,6 +647,10 @@ EOF
   log "Installation directory: $INSTALL_DIR"
   log "Start bot after install: $START_BOT_AFTER_INSTALL"
   log "Setup systemd service: $SETUP_SYSTEMD"
+  log "Verbose output: $VERBOSE_OUTPUT"
+  echo
+  log "NOTE: This script requires that you have already manually cloned the repository."
+  log "The script will NOT automatically clone the repository for you."
   echo
   read -p "Press Enter to continue or Ctrl+C to cancel..."
   
@@ -647,15 +658,37 @@ EOF
   section "Manual Repository Setup Required"
   log "IMPORTANT: This installation script requires that you manually clone or download"
   log "the Noxhime repository to your installation directory before running this script."
+  log "The script will NOT automatically clone the repository for you."
   log ""
-  log "To manually set up the repository, you can use one of these methods:"
-  log "1. Using git: git clone https://github.com/NullMeDev/noxhime-bot.git $INSTALL_DIR"
-  log "2. Download and extract the zip file from the GitHub repository"
+  log "To manually set up the repository before running this script, use one of these methods:"
+  log "1. Create the directory and clone with git (you must do this yourself):"
+  log "   mkdir -p $INSTALL_DIR"
+  log "   git clone https://github.com/NullMeDev/noxhime-bot.git $INSTALL_DIR"
+  log "   Note: This requires Git to be installed on your system."
   log ""
-  read -p "Have you already cloned or downloaded the repository to $INSTALL_DIR? (y/N): " -n 1 -r
+  log "2. OR download the zip file from GitHub, create the directory, and extract it:"
+  log "   mkdir -p $INSTALL_DIR"
+  log "   # Then extract the downloaded zip file into $INSTALL_DIR"
+  log ""
+  read -p "Have you already created the directory and cloned/downloaded the repository to $INSTALL_DIR? (y/N): " -n 1 -r
   echo
   if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    error "Please clone or download the repository first, then run this script again."
+    error "Please create the directory and clone/download the repository first, then run this script again."
+  fi
+  
+  # Extra verification that the directory actually contains a proper repository
+  if [ ! -f "$INSTALL_DIR/package.json" ]; then
+    error "Could not find package.json in $INSTALL_DIR. Please ensure you've correctly cloned or downloaded the repository to this location."
+  fi
+  
+  # Further verify the repository structure
+  if [ ! -d "$INSTALL_DIR/src" ] || [ ! -f "$INSTALL_DIR/package-lock.json" ]; then
+    warn "The repository structure may be incomplete. Missing key files or directories."
+    read -p "Do you want to continue anyway? (y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+      error "Please ensure you have a complete repository clone before continuing."
+    fi
   fi
   
   # Run installation steps

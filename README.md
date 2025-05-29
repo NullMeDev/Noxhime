@@ -128,13 +128,14 @@ For detailed documentation on the whitelist feature, see [docs/whitelist.md](doc
 
 ## Commands
 
-Noxhime Bot provides a comprehensive set of commands for Discord interaction and server management. **All commands are available to everyone** - no authentication required!
+Noxhime Bot provides a comprehensive set of commands for Discord interaction and server management. Regular commands are available to everyone, while sensitive operations require BioLock v2 authentication.
 
 See the complete [Command Reference](docs/commands.md) for a detailed list of:
 - Discord commands available to all users
+- BioLock-protected commands requiring authentication
 - Whitelist management commands (requires Discord admin permissions)
 - Server-side management commands
-- API endpoints (open access)
+- API endpoints (can be restricted via IP/Port whitelisting)
 
 Here are some of the most commonly used commands:
 
@@ -326,12 +327,11 @@ Made With &#x1F49C by NullMeDev.</p>
 ## Changelog
 
 ### v3.1.0 (May 29, 2025)
-- **Added**: BioLock v2 - User-level authentication system
-  - Individual user authentication via Discord DMs
+- **Enhanced**: BioLock v2 with additional security features
   - Multiple security states (locked, pending, unlocked, override)
   - Emergency override functionality with secure passphrase
   - Comprehensive audit logging
-  - Session management with timeouts
+  - Improved session management with configurable timeouts
 - **Added**: Real-time Web Dashboard (Phase 7)
   - System status tiles with real-time updates via Socket.IO
   - Command trigger panel for remote administration
@@ -349,22 +349,24 @@ Made With &#x1F49C by NullMeDev.</p>
 - **Updated**: Documentation to reflect new features and changes
 
 ### v3.0.0 (May 28, 2025)
-- **MAJOR CHANGE**: Reimplemented authentication with user-level protection
+- **MAJOR CHANGE**: Introduced BioLock v2 with user-level authentication
 - **Added**: BioLock v2 framework for per-user command protection
+- **Added**: User-specific authentication sessions via Discord DMs
 - **Added**: Web dashboard foundation with Express API
-- **Changed**: Command protection from global to user-level
+- **Changed**: Command protection from global/owner-only to granular user-level
+- **Changed**: Authentication model from global to per-user security profiles
 - **Updated**: Documentation and installation scripts
 - **Updated**: Environment configuration for new security model
 
 ### v2.1.0 (May 28, 2025)
-- **MAJOR CHANGE**: Removed all authentication measures - bot is now free and open for everyone
-- **Removed**: BioLock security system completely  
-- **Removed**: Owner ID requirements and owner-only command restrictions
-- **Removed**: API key authentication - all API endpoints now open access
+- **MAJOR CHANGE**: Removed the original BioLock v1 global authentication system
+- **Removed**: Original BioLock security system that was owner-only
+- **Removed**: Owner ID requirements and global command restrictions
+- **Changed**: API endpoints now protected by IP/Port whitelist instead of API keys
 - **Changed**: Whitelist management now requires Discord Administrator permissions instead of owner-only
-- **Updated**: All commands now available to all users
-- **Updated**: Documentation and installation scripts to reflect open access model
-- **Updated**: Environment configuration to remove authentication requirements
+- **Updated**: More commands available to regular users
+- **Updated**: Documentation and installation scripts to reflect the new model
+- **Updated**: Environment configuration to prepare for user-level authentication
 
 ### v2.0.1 (May 28, 2025)
 - **Fixed**: ASCII artwork display issues in install scripts

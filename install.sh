@@ -12,6 +12,7 @@ set -euo pipefail
 # - Uses Node.js 18.x specifically
 # - Skips already installed packages
 # - Minimizes dependencies
+# - Allows installation in any directory
 # ============================
 
 # Text colors and formatting
@@ -33,6 +34,7 @@ INSTALL_DIR=""
 START_BOT_AFTER_INSTALL=true
 SETUP_SYSTEMD=true
 VERBOSE_OUTPUT=false
+USE_CURRENT_DIR=false
 
 # Utility functions
 log() {
@@ -200,7 +202,15 @@ setup_repository() {
 
   # Check if the installation directory exists
   if [ ! -d "$INSTALL_DIR" ]; then
-    error "Installation directory $INSTALL_DIR does not exist. Please manually create this directory and download the application files before running this script."
+    # If using current directory but it doesn't exist (shouldn't happen)
+    if [ "$USE_CURRENT_DIR" = true ]; then
+      error "Current directory does not exist? This should not happen."
+    fi
+    
+    log "Creating installation directory: $INSTALL_DIR"
+    mkdir -p "$INSTALL_DIR"
+    
+    error "Installation directory $INSTALL_DIR created but is empty. Please manually download the application files to this directory before running this script."
   fi
 
   # Change to the installation directory
@@ -571,6 +581,9 @@ parse_arguments() {
       --verbose)
         VERBOSE_OUTPUT=true
         ;;
+      --current)
+        USE_CURRENT_DIR=true
+        ;;
       --help)
         echo "Noxhime Bot - Ubuntu 24.04 Installation Script"
         echo
@@ -578,6 +591,7 @@ parse_arguments() {
         echo
         echo "Options:"
         echo "  --dir=PATH        Specify installation directory (default: $DEFAULT_INSTALL_DIR)"
+        echo "  --current         Use current directory for installation"
         echo "  --no-start        Don't start the bot after installation"
         echo "  --no-systemd      Don't set up systemd service"
         echo "  --verbose         Show detailed output during installation"
@@ -591,6 +605,12 @@ parse_arguments() {
     esac
     shift
   done
+  
+  # Use current directory if requested
+  if [ "$USE_CURRENT_DIR" = true ]; then
+    INSTALL_DIR="$(pwd)"
+    log "Using current directory for installation: $INSTALL_DIR"
+  fi
   
   # Set default installation directory if not specified
   if [ -z "$INSTALL_DIR" ]; then
@@ -653,4 +673,3 @@ EOF
 
 # Run main function with all arguments
 main "$@"
-

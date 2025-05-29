@@ -1,7 +1,8 @@
 #!/bin/bash
 # Noxhime Bot Auto-Update Script
-# This script performs an automatic update of Noxhime Bot from the GitHub repository
+# This script performs an automatic update of Noxhime Bot from the repository
 # It handles sending Discord notifications about the update process
+# Note: This script assumes the repository was manually cloned and will not attempt to clone it
 
 set -euo pipefail
 
@@ -57,21 +58,46 @@ echo "[+] Current version: $PREVIOUS_VERSION"
 send_discord_notification "Noxhime Update Process Starting" "Noxhime is updating. Please wait..." "16776960"
 sleep 2
 
-# Fetch latest changes
-echo "[+] Fetching latest changes from GitHub repository..."
-git fetch origin
+# Check if this is a git repository
+if [ ! -d .git ]; then
+  echo "[!] Not a git repository. Skipping update from remote repository."
+  send_discord_notification "Update Process Note" "Not a git repository. Using local files only." "16776960"
+else
+  # Warning about GitHub authentication
+  echo "[!] WARNING: The following git operations may require GitHub authentication if you haven't set up SSH keys or stored credentials."
+  echo "[!] If you're prompted for authentication, you can press Ctrl+C to cancel."
+  
+  # Fetch latest changes with timeout
+  echo "[+] Fetching latest changes from repository (with 30s timeout)..."
+  if timeout 30s git fetch origin; then
+    # Get the latest commit hash before pulling
+    LATEST_REMOTE_COMMIT=$(git rev-parse origin/main 2>/dev/null || echo "unknown")
+    
+    # Pull the latest changes with timeout
+    echo "[+] Pulling latest changes from repository (with 30s timeout)..."
+    if timeout 30s git pull origin main; then
+      echo "[+] Successfully pulled latest changes."
+    else
+      echo "[!] Failed to pull latest changes. Continuing with existing repository state."
+      send_discord_notification "Update Process Warning" "Failed to pull latest changes. Continuing with existing repository state." "16776960"
+      # Set LATEST_REMOTE_COMMIT to current commit to skip the "already up-to-date" check
+      LATEST_REMOTE_COMMIT=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+    fi
+  else
+    echo "[!] Failed to fetch from remote repository. Continuing with existing repository state."
+    send_discord_notification "Update Process Warning" "Failed to fetch from remote repository. Continuing with existing repository state." "16776960"
+    # Set LATEST_REMOTE_COMMIT to current commit to skip the "already up-to-date" check
+    LATEST_REMOTE_COMMIT=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+  fi
+fi
 
-# Get the latest commit hash before pulling
-LATEST_REMOTE_COMMIT=$(git rev-parse origin/main)
-
-# Pull the latest changes
-git pull origin main
-
-# Check if there were any changes
-if [ "$(git rev-parse HEAD)" == "$LATEST_REMOTE_COMMIT" ]; then
-  echo "[+] Already up-to-date!"
-  send_discord_notification "No Updates Available" "Noxhime is already on the latest version." "65280"
-  exit 0
+# Check if there were any changes, but only if we have valid commit hashes
+if [ -n "$LATEST_REMOTE_COMMIT" ] && [ "$LATEST_REMOTE_COMMIT" != "unknown" ]; then
+  if [ "$(git rev-parse HEAD 2>/dev/null || echo "unknown")" == "$LATEST_REMOTE_COMMIT" ]; then
+    echo "[+] Already up-to-date!"
+    send_discord_notification "No Updates Available" "Noxhime is already on the latest version." "65280"
+    exit 0
+  fi
 fi
 
 echo "[+] Updated to latest version successfully."
@@ -119,8 +145,11 @@ if [ ! -f "$PROJECT_ROOT/scripts/version-manager.sh" ]; then
   # Create the version manager script (simplified for auto-update.sh)
   mkdir -p "$PROJECT_ROOT/scripts"
   
-  # Copy version manager from main repository or use a simplified version
-  curl -s "https://raw.githubusercontent.com/NullMeDev/noxhime-bot/main/scripts/version-manager.sh" -o "$PROJECT_ROOT/scripts/version-manager.sh" || {
+  # Try to copy version manager from main repository with a timeout (this doesn't require auth)
+  echo "[+] Attempting to download version manager script (with 10s timeout)..."
+  if timeout 10s curl -s "https://raw.githubusercontent.com/NullMeDev/noxhime-bot/main/scripts/version-manager.sh" -o "$PROJECT_ROOT/scripts/version-manager.sh"; then
+    echo "[+] Successfully downloaded version manager script."
+  else
     echo "[!] Could not download version manager. Creating a minimal version..."
     cat > "$PROJECT_ROOT/scripts/version-manager.sh" << 'EOL'
 #!/bin/bash

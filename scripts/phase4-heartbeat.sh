@@ -541,10 +541,13 @@ const crypto = require('crypto');
 class PatchManager {
     constructor() {
         this.noxhimeHome = '/home/nulladmin/noxhime';
-        this.patchUrl = process.env.PATCH_SERVER_URL || 'https://api.github.com/repos/NullMeDev/noxhime-bot';
+        // Use a public URL that doesn't require authentication
+        this.patchUrl = process.env.PATCH_SERVER_URL || 'https://raw.githubusercontent.com/NullMeDev/noxhime-bot/main';
         this.currentVersion = '3.0.0';
         this.patchHistory = [];
         this.autoApply = process.env.AUTO_APPLY_PATCHES === 'true';
+        // Flag to indicate if we should try GitHub API operations
+        this.useGitHubAPI = process.env.USE_GITHUB_API === 'true';
         
         this.loadPatchHistory();
     }
@@ -575,70 +578,160 @@ class PatchManager {
         console.log('🔍 Checking for updates...');
         
         try {
-            // Check GitHub releases for new versions
-            const response = await axios.get(`${this.patchUrl}/releases/latest`, {
-                timeout: 10000,
-                headers: {
-                    'User-Agent': 'Noxhime-Bot/3.0.0'
+            // First try with version.json which doesn't require authentication
+            try {
+                const response = await axios.get(`${this.patchUrl}/version.json`, {
+                    timeout: 5000,
+                    headers: {
+                        'User-Agent': 'Noxhime-Bot/3.0.0'
+                    }
+                });
+                
+                const versionData = response.data;
+                if (versionData && versionData.version) {
+                    const latestVersion = versionData.version.replace('v', '');
+                    
+                    if (this.isNewerVersion(latestVersion, this.currentVersion)) {
+                        console.log(`📦 New version available: ${latestVersion}`);
+                        return {
+                            available: true,
+                            version: latestVersion,
+                            release: {
+                                tag_name: `v${latestVersion}`,
+                                name: versionData.name || `Version ${latestVersion}`,
+                                body: versionData.description || 'New version available'
+                            }
+                        };
+                    } else {
+                        console.log('✅ System is up to date');
+                        return { available: false };
+                    }
                 }
-            });
+            } catch (versionError) {
+                console.log('Could not fetch version.json, trying alternate methods...');
+            }
             
-            const latestRelease = response.data;
-            const latestVersion = latestRelease.tag_name.replace('v', '');
-            
-            if (this.isNewerVersion(latestVersion, this.currentVersion)) {
-                console.log(`📦 New version available: ${latestVersion}`);
-                return {
-                    available: true,
-                    version: latestVersion,
-                    release: latestRelease
-                };
+            // Only try GitHub API if explicitly enabled
+            if (this.useGitHubAPI) {
+                // This requires a GitHub Personal Access Token for private repos
+                // or may have rate limits for public repos
+                console.log('Attempting to check GitHub API for updates...');
+                const githubApiUrl = 'https://api.github.com/repos/NullMeDev/noxhime-bot/releases/latest';
+                
+                const response = await axios.get(githubApiUrl, {
+                    timeout: 5000,
+                    headers: {
+                        'User-Agent': 'Noxhime-Bot/3.0.0'
+                    }
+                });
+                
+                const latestRelease = response.data;
+                const latestVersion = latestRelease.tag_name.replace('v', '');
+                
+                if (this.isNewerVersion(latestVersion, this.currentVersion)) {
+                    console.log(`📦 New version available: ${latestVersion}`);
+                    return {
+                        available: true,
+                        version: latestVersion,
+                        release: latestRelease
+                    };
+                } else {
+                    console.log('✅ System is up to date');
+                    return { available: false };
+                }
             } else {
-                console.log('✅ System is up to date');
-                return { available: false };
+                console.log('GitHub API checks disabled. Skipping GitHub release check.');
+                return { available: false, skipped: true };
             }
             
         } catch (error) {
             console.error('Failed to check for updates:', error);
             return { available: false, error: error.message };
         }
-    }
+    },
     
     async checkForPatches() {
         console.log('🔍 Checking for patches...');
         
         try {
-            // Check for patch manifest
-            const patchResponse = await axios.get(`${this.patchUrl}/contents/patches/patch-manifest.json`, {
-                timeout: 10000,
-                headers: {
-                    'User-Agent': 'Noxhime-Bot/3.0.0'
+            // Try direct access to patches/patch-manifest.json first (no auth required)
+            try {
+                const patchResponse = await axios.get(`${this.patchUrl}/patches/patch-manifest.json`, {
+                    timeout: 5000,
+                    headers: {
+                        'User-Agent': 'Noxhime-Bot/3.0.0'
+                    }
+                });
+                
+                let manifest;
+                if (typeof patchResponse.data === 'string') {
+                    manifest = JSON.parse(patchResponse.data);
+                } else {
+                    manifest = patchResponse.data;
                 }
-            });
+                
+                const availablePatches = manifest.patches.filter(patch => 
+                    !this.isPatchApplied(patch.id) && 
+                    this.isCompatibleVersion(patch.target_version)
+                );
+                
+                console.log(`📋 Found ${availablePatches.length} available patches`);
+                return availablePatches;
+            } catch (directError) {
+                console.log('Could not fetch patch manifest directly, trying alternate methods...');
+            }
             
-            const manifestData = Buffer.from(patchResponse.data.content, 'base64').toString('utf8');
-            const manifest = JSON.parse(manifestData);
-            
-            const availablePatches = manifest.patches.filter(patch => 
-                !this.isPatchApplied(patch.id) && 
-                this.isCompatibleVersion(patch.target_version)
-            );
-            
-            console.log(`📋 Found ${availablePatches.length} available patches`);
-            return availablePatches;
+            // Only try GitHub API if explicitly enabled
+            if (this.useGitHubAPI) {
+                console.log('Attempting to check GitHub API for patches...');
+                const githubApiUrl = 'https://api.github.com/repos/NullMeDev/noxhime-bot/contents/patches/patch-manifest.json';
+                
+                const patchResponse = await axios.get(githubApiUrl, {
+                    timeout: 5000,
+                    headers: {
+                        'User-Agent': 'Noxhime-Bot/3.0.0'
+                    }
+                });
+                
+                const manifestData = Buffer.from(patchResponse.data.content, 'base64').toString('utf8');
+                const manifest = JSON.parse(manifestData);
+                
+                const availablePatches = manifest.patches.filter(patch => 
+                    !this.isPatchApplied(patch.id) && 
+                    this.isCompatibleVersion(patch.target_version)
+                );
+                
+                console.log(`📋 Found ${availablePatches.length} available patches`);
+                return availablePatches;
+            } else {
+                console.log('GitHub API checks disabled. Skipping GitHub patch check.');
+                return [];
+            }
             
         } catch (error) {
             console.error('Failed to check for patches:', error);
             return [];
         }
-    }
+    },
     
     async downloadPatch(patchInfo) {
         console.log(`📥 Downloading patch: ${patchInfo.id}`);
         
         try {
-            const patchResponse = await axios.get(patchInfo.download_url, {
-                timeout: 30000,
+            // Ensure the download URL doesn't require authentication
+            let downloadUrl = patchInfo.download_url;
+            
+            // If it's a GitHub API URL, try to convert it to a raw.githubusercontent.com URL
+            if (downloadUrl.includes('api.github.com')) {
+                console.log('Converting GitHub API URL to raw content URL...');
+                downloadUrl = downloadUrl
+                    .replace('https://api.github.com/repos/', 'https://raw.githubusercontent.com/')
+                    .replace('/contents/', '/');
+            }
+            
+            console.log(`Downloading from: ${downloadUrl}`);
+            const patchResponse = await axios.get(downloadUrl, {
+                timeout: 10000,
                 headers: {
                     'User-Agent': 'Noxhime-Bot/3.0.0'
                 }
@@ -1429,16 +1522,17 @@ main() {
     echo -e "${YELLOW}Key Features:${NC}"
     echo "• 🫀 30-second heartbeat monitoring"
     echo "• 🔧 Automatic self-healing capabilities"
-    echo "• 📦 Auto-patch system with GitHub integration"
+    echo "• 📦 Auto-patch system (no GitHub authentication required)"
     echo "• 📸 System recovery points"
     echo "• 🚨 Health alerts and notifications"
     echo
     echo -e "${BLUE}Starting Services:${NC}"
     echo "pm2 start $NOXHIME_HOME/heartbeat/ecosystem.config.js"
     echo
-    echo -e "${YELLOW}Environment Variables Needed:${NC}"
+    echo "${YELLOW}Environment Variables Needed:${NC}"
     echo "PATCH_SERVER_URL - URL for patch manifest (optional)"
     echo "AUTO_APPLY_PATCHES - Enable automatic patch application (true/false)"
+    echo "USE_GITHUB_API - Enable GitHub API checks (true/false, defaults to false)"
     echo
     echo -e "${PURPLE}Proceed to Phase 5 when ready.${NC}"
 }
