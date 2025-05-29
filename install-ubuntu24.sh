@@ -26,7 +26,8 @@ NC='\033[0m' # No Color
 
 # Default installation paths
 DEFAULT_INSTALL_DIR="$HOME/noxhime-bot"
-REPO_URL="https://github.com/NullMeDev/noxhime-bot.git"
+# Note: This script assumes the repository has already been manually cloned/downloaded
+# and is present in the installation directory
 
 # Installation options
 INSTALL_DIR=""
@@ -193,50 +194,39 @@ install_nodejs() {
   success "Node.js 18.x setup completed!"
 }
 
-# Function to clone or update the repository
+# Function to set up and validate the repository directory
+# Note: This function assumes the repository has been manually cloned/downloaded
 setup_repository() {
   section "Setting Up Repository"
 
-  if [ -d "$INSTALL_DIR" ]; then
-    log "Directory $INSTALL_DIR already exists."
-    read -p "Do you want to update the existing installation? (Y/n): " -n 1 -r
+  # Check if the installation directory exists
+  if [ ! -d "$INSTALL_DIR" ]; then
+    error "Installation directory $INSTALL_DIR does not exist. Please manually clone or download the repository first."
+  fi
+
+  # Change to the installation directory
+  cd "$INSTALL_DIR"
+  
+  # Check if this is a valid repository with required files
+  if [ ! -f "package.json" ]; then
+    error "The directory $INSTALL_DIR does not appear to contain a valid Noxhime repository. Please ensure you have manually cloned or downloaded the repository correctly."
+  fi
+  
+  log "Repository directory verified."
+  
+  # Check if this is a git repository and offer to update it
+  if [ -d .git ]; then
+    read -p "Would you like to update the repository with the latest changes? (Y/n): " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Nn]$ ]]; then
-      log "Updating existing installation..."
-      cd "$INSTALL_DIR"
-      
-      # Check if this is a git repository
-      if [ -d .git ]; then
-        log "Pulling latest changes from repository..."
-        git pull
-      else
-        warn "Existing directory is not a git repository. Backing it up and cloning fresh."
-        BACKUP_DIR="${INSTALL_DIR}_backup_$(date +%Y%m%d%H%M%S)"
-        mv "$INSTALL_DIR" "$BACKUP_DIR"
-        log "Backed up existing directory to $BACKUP_DIR"
-        
-        git clone "$REPO_URL" "$INSTALL_DIR"
-        cd "$INSTALL_DIR"
-      fi
+      log "Pulling latest changes from repository..."
+      git pull
     else
-      read -p "Do you want to delete the existing directory and start fresh? (y/N): " -n 1 -r
-      echo
-      if [[ $REPLY =~ ^[Yy]$ ]]; then
-        log "Removing existing directory..."
-        rm -rf "$INSTALL_DIR"
-        
-        log "Cloning repository to $INSTALL_DIR..."
-        git clone "$REPO_URL" "$INSTALL_DIR"
-        cd "$INSTALL_DIR"
-      else
-        error "Installation cannot proceed without updating or replacing the existing directory."
-      fi
+      log "Skipping repository update."
     fi
   else
-    log "Cloning repository to $INSTALL_DIR..."
-    mkdir -p "$INSTALL_DIR"
-    git clone "$REPO_URL" "$INSTALL_DIR"
-    cd "$INSTALL_DIR"
+    log "Directory is not a git repository. Automated updates will not be available."
+    log "For future updates, consider using git to clone the repository."
   fi
 
   success "Repository setup completed!"
@@ -652,6 +642,21 @@ EOF
   log "Setup systemd service: $SETUP_SYSTEMD"
   echo
   read -p "Press Enter to continue or Ctrl+C to cancel..."
+  
+  # Display manual repository setup message
+  section "Manual Repository Setup Required"
+  log "IMPORTANT: This installation script requires that you manually clone or download"
+  log "the Noxhime repository to your installation directory before running this script."
+  log ""
+  log "To manually set up the repository, you can use one of these methods:"
+  log "1. Using git: git clone https://github.com/NullMeDev/noxhime-bot.git $INSTALL_DIR"
+  log "2. Download and extract the zip file from the GitHub repository"
+  log ""
+  read -p "Have you already cloned or downloaded the repository to $INSTALL_DIR? (y/N): " -n 1 -r
+  echo
+  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    error "Please clone or download the repository first, then run this script again."
+  fi
   
   # Run installation steps
   check_ubuntu_version
