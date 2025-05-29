@@ -4,9 +4,19 @@
 
 ## Features
 
-- **Open Access** - No authentication required, free for everyone to use
+- **Open Access** - Free for everyone to use with user-level security
 - Discord integration with comprehensive command system
 - OpenAI-powered chat responses
+- **BioLock v2** - User-level authentication for sensitive commands
+  - Individual user authentication via Discord DMs
+  - Emergency override capabilities
+  - Session management and timeouts
+  - Audit logging for security events
+- **Real-time Web Dashboard** - Monitor and control your bot
+  - System status tiles with real-time updates
+  - Command trigger panel for remote administration
+  - Activity log and service status monitoring
+  - Mobile-responsive design with Tailwind CSS
 - **IP/Port Whitelisting** for API security (configurable per installation)
   - Restrict API access to specific IP addresses and ports
   - Manage whitelist via Discord admin commands
@@ -20,45 +30,50 @@
 - Sentinel Intelligence with log monitoring and suspicious behavior detection
 - Automated backup system with Rclone integration
 - Evolving Personality Core with mood-based responses
-- **All commands available to everyone** - no owner restrictions
+- **Optimized for Ubuntu 24.04** with Node.js 18.x
 
 ## Setup Instructions
 
-### Option 1: Enhanced Installer (Recommended)
+### Option 1: Ubuntu 24.04 Installer (Recommended)
 
-Use our enhanced installer script for a complete setup with IP/Port whitelisting:
+Use our optimized installer script for Ubuntu 24.04 with Node.js 18.x:
 
 ```bash
-./install-noxhime.sh
+chmod +x install-ubuntu24.sh
+./install-ubuntu24.sh
 ```
 
 This will:
+- Check for Ubuntu 24.04 compatibility
+- Install Node.js 18.x (if not already installed)
+- Skip already installed packages for faster setup
 - Clone the repository
 - Install all dependencies
 - Create the database
 - Guide you through configuration with interactive prompts
 - Configure IP/Port whitelisting for enhanced security
-  - Add specific IP addresses to whitelist
-  - Add specific ports to whitelist
-  - Enable/disable whitelisting as needed
-- Set up system services and monitoring
-- Create shell aliases for easy management
+- Set up systemd services and monitoring
+- Build the web dashboard
 
-### Option 2: Quick Setup
-
-Run the following command to automatically download and install Noxhime Bot with all dependencies:
-
+The installer supports several options:
 ```bash
-curl -sSL https://raw.githubusercontent.com/NullMeDev/noxhime-bot/main/quick-setup.sh | bash
+./install-ubuntu24.sh --dir=/path/to/install --no-systemd --no-start --verbose
 ```
 
-### Option 3: Legacy Installer
+### Option 2: Cleanup After Installation
 
-If you prefer the original installer without whitelist configuration:
+After installation, run the cleanup script to optimize your installation:
 
 ```bash
-./noxhime-installer.sh
+chmod +x cleanup.sh
+./cleanup.sh
 ```
+
+This will:
+- Remove unnecessary files
+- Optimize dependencies
+- Ensure Node.js 18.x compatibility
+- Verify the installation works correctly
 
 ### Option 3: Manual Installation
 
@@ -128,7 +143,9 @@ Here are some of the most commonly used commands:
 - `!system` - Display system status and statistics
 - `!whitelist status` - Show current whitelist configuration (admin only)
 
-### Available Commands for Everyone
+### Available Commands
+
+#### Regular Commands (No Authentication Required)
 - `!status` - Check if bot is online
 - `!whoami` - Shows welcome message for all users
 - `!cmds` - Lists available commands
@@ -137,33 +154,56 @@ Here are some of the most commonly used commands:
 - `!uptime` - Shows system and bot uptime
 - `!services` - Checks status of system services
 - `!mood` - Shows bot's current emotional state
+- `!logs <type> <count>` - View recent system logs
+- `!incidents` - Views security incidents
+
+#### BioLock Protected Commands (Require Authentication)
+- `!unlock` - Authenticate with BioLock
+- `!lock` - Lock your BioLock session
+- `!override [passphrase]` - Emergency override for urgent access
 - `!restart` - Restart the bot
 - `!heal` - Trigger self-healing maintenance routine
-- `!logs <type> <count>` - View recent system logs
 - `!backup` - Triggers manual backup
 - `!sentinel <start|stop>` - Controls sentinel monitoring
-- `!incidents` - Views security incidents
-- `!lock` - Display information about lock functionality
+- `!purge` - Purge messages or data
+
+#### Web Dashboard Commands
+- `!link` - Get a one-time token for web dashboard access
 
 ### Admin-Only Commands (Discord Server Administrators)
 - `!whitelist` commands - Manage IP/port whitelisting (requires Discord admin permissions)
 
 ## Authentication and Security
 
-**Noxhime Bot is now completely open and free for everyone to use!**
+**Noxhime Bot uses BioLock v2 for user-level command protection!**
 
-### What Changed
-- ❌ **BioLock System**: Completely removed - no more owner-only restrictions
-- ❌ **Owner Authentication**: No owner ID required anymore  
-- ❌ **API Key Requirements**: API endpoints are now open access
-- ✅ **Whitelist Management**: Now requires Discord server admin permissions instead of owner-only
-- ✅ **Per-Server Security**: Security features are configured per installation, not per creator
+### BioLock v2 Security System
+
+BioLock v2 is a user-level authentication system that protects sensitive commands from unauthorized use. Unlike global authentication systems, BioLock v2 is designed to provide individualized security for each user of the bot.
+
+#### Key Features
+- **User-Level Authentication**: Each user has their own BioLock profile
+- **Multiple Security States**: Supports locked, pending, unlocked, and emergency override states
+- **Discord-Based Authentication**: Authentication happens through secure Discord DMs
+- **Audit Logging**: Comprehensive logging of all authentication events
+- **Emergency Override**: Secure backup method for urgent access
+
+#### Protected Commands
+The following commands are protected by BioLock v2 and require authentication:
+- `!restart` - Restart the bot
+- `!heal` - Trigger self-healing routine
+- `!backup` - Trigger manual backup
+- `!sentinel <start|stop>` - Control the Sentinel monitoring system
+- `!whitelist <action>` - Manage server whitelist
+- `!purge` - Purge messages or data
+- `!self-destruct` - Initiate self-destruct sequence (if implemented)
 
 ### Current Access Model
-- **All Discord commands** are available to everyone
+- **Regular commands** are available to everyone
+- **Sensitive commands** require BioLock authentication
 - **Whitelist management** requires Discord Administrator permissions in the server
-- **API endpoints** are open for public access (can be restricted per installation with IP/Port whitelisting)
-- **Installation security** is managed at the server level, not user level
+- **Web dashboard access** is authenticated via one-time tokens and JWTs
+- **API endpoints** can be restricted per installation with IP/Port whitelisting
 
 ## Server Monitoring System
 
@@ -245,14 +285,34 @@ The bot features a dynamic personality system that evolves based on interactions
 - User interactions influence emotional state
 - Resource pressure affects focus and concern levels
 
-## Web Interface Integration
+## Web Interface Dashboard (Phase 7)
 
-A web dashboard is available at nullme.lol that provides:
-- Real-time bot status monitoring
-- Security incident visualization
-- System performance metrics
-- Mood and personality management
-- Command history and interaction logs
+Noxhime includes a real-time, identity-aware web dashboard that provides:
+
+### Features
+- **Real-time System Monitoring**: Live updates of CPU, memory, disk usage, and uptime
+- **Bot Status**: Current status, mood, and uptime information
+- **Command Trigger Panel**: Execute administrative commands directly from the dashboard
+- **Activity Log**: View recent events and system logs in real-time
+- **Service Status**: Monitor the health of system services
+- **User-Specific Views**: Each user has their own authenticated dashboard
+- **Secure Authentication**: Discord-linked JWT authentication with one-time tokens
+- **Mobile Responsive**: Works well on phones and low-power devices
+
+### Authentication
+To access the dashboard:
+1. Use the `!link` command in Discord to receive a one-time token via DM
+2. Enter the token on the dashboard login screen
+3. Your session will be authenticated and linked to your Discord ID
+
+### Technologies
+- Socket.IO for real-time updates
+- JWT for secure authentication
+- Tailwind CSS for responsive design
+- Express.js backend API
+
+### Dashboard URL
+Access your dashboard at the URL specified in your .env file (default: http://localhost:3000)
 
 <p align="center">
 Contributions are welcome, either request here, or email me at null@nullme.dev! Please feel free to submit a pull request.
@@ -264,6 +324,37 @@ Consider donating at https://ko-fi.com/NullMeDev
 Made With &#x1F49C by NullMeDev.</p>
 
 ## Changelog
+
+### v3.1.0 (May 29, 2025)
+- **Added**: BioLock v2 - User-level authentication system
+  - Individual user authentication via Discord DMs
+  - Multiple security states (locked, pending, unlocked, override)
+  - Emergency override functionality with secure passphrase
+  - Comprehensive audit logging
+  - Session management with timeouts
+- **Added**: Real-time Web Dashboard (Phase 7)
+  - System status tiles with real-time updates via Socket.IO
+  - Command trigger panel for remote administration
+  - Activity log and service status monitoring
+  - JWT authentication linked to Discord ID
+  - Mobile-responsive design with Tailwind CSS
+- **Added**: New install-ubuntu24.sh script optimized for Ubuntu 24.04
+  - Specific Node.js 18.x installation
+  - Skips already installed packages
+  - Improved error handling and verification
+- **Added**: cleanup.sh and cleanup.ps1 scripts for removing unnecessary files
+- **Removed**: Unnecessary installation scripts and dependencies
+- **Optimized**: Package.json to include only required dependencies
+- **Fixed**: Node.js compatibility issues with version 18.x
+- **Updated**: Documentation to reflect new features and changes
+
+### v3.0.0 (May 28, 2025)
+- **MAJOR CHANGE**: Reimplemented authentication with user-level protection
+- **Added**: BioLock v2 framework for per-user command protection
+- **Added**: Web dashboard foundation with Express API
+- **Changed**: Command protection from global to user-level
+- **Updated**: Documentation and installation scripts
+- **Updated**: Environment configuration for new security model
 
 ### v2.1.0 (May 28, 2025)
 - **MAJOR CHANGE**: Removed all authentication measures - bot is now free and open for everyone
