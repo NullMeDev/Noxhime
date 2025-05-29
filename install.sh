@@ -2,6 +2,7 @@
 # Noxhime Bot - Ubuntu 24.04 Optimized Installation Script
 # This script performs a streamlined installation of Noxhime Bot specifically for Ubuntu 24.04
 # with Node.js 18.x and efficient package management
+# Fixed version - 2025 update
 
 # Exit on error, undefined variables, and propagate pipe errors
 set -euo pipefail
@@ -93,7 +94,7 @@ check_ubuntu_version() {
   log "Detected Ubuntu $UBUNTU_VERSION ($UBUNTU_CODENAME)"
 
   # Check if this is Ubuntu 24.04 or newer
-  if [[ $(echo "$UBUNTU_VERSION >= 24.04" | bc) -eq 1 ]]; then
+  if [ "$(echo "$UBUNTU_VERSION >= 24.04" | bc)" -eq 1 ]; then
     success "Ubuntu version $UBUNTU_VERSION is supported."
   else
     warn "This script is optimized for Ubuntu 24.04, but you're running $UBUNTU_VERSION."
@@ -219,7 +220,6 @@ install_nodejs() {
 }
 
 # Function to set up and validate the repository directory
-# Note: This function assumes the repository files are already present
 setup_repository() {
   section "Setting Up Repository"
 
@@ -262,7 +262,7 @@ install_dependencies() {
   
   log "Installing npm dependencies..."
   # Using --no-fund and --no-audit to speed up installation
-  npm ci --no-fund --no-audit
+  npm ci --no-fund --no-audit || npm install --no-fund --no-audit
   
   success "Dependencies installed successfully!"
 }
@@ -713,3 +713,4 @@ EOF
 
 # Run main function with all arguments
 main "$@"
+
