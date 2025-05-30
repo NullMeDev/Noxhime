@@ -14,6 +14,9 @@ import {
 import { getSentinel } from './sentinel';
 import { getPersonalityCore, EventType } from './personality';
 import { handleWhitelistCommands } from './whitelist-commands';
+import { getFail2BanMonitor } from './fail2ban';
+import { getHealthCheckMonitor } from './health-check';
+import { getDisasterRecovery } from "./modules/monitoring/disaster-recovery";
 
 // Use require for modules with export issues
 const api = require('./api');
@@ -88,17 +91,23 @@ const SYSTEM_STATS_INTERVAL = parseInt(process.env.SYSTEM_STATS_INTERVAL || '360
 const SENTINEL_ENABLED = process.env.SENTINEL_ENABLED === 'true';
 const SENTINEL_CHECK_INTERVAL = parseInt(process.env.SENTINEL_CHECK_INTERVAL || '60000'); // Default: 1 minute
 const RCLONE_BACKUP_ENABLED = process.env.RCLONE_BACKUP_ENABLED === 'true';
-const API_ENABLED = process.env.API_ENABLED === 'true';
+const API_ENABLED = process.env.API_ENABLED === 'true' || true; // Force API to be enabled
 const API_KEYS = process.env.API_KEYS?.split(',') || [];
 const RCLONE_REMOTE = process.env.RCLONE_REMOTE || 'gdrive:NoxhimeBackups';
 const RCLONE_SCHEDULE = process.env.RCLONE_SCHEDULE || '0 0 * * *'; // Default: Daily at midnight
 
-  // Phase 5: Personality Core Configuration
-  const PERSONALITY_ENABLED = process.env.PERSONALITY_ENABLED === 'true';
-  const DEFAULT_MOOD = process.env.DEFAULT_MOOD || 'focused';
+// Phase 5: Personality Core Configuration
+const PERSONALITY_ENABLED = process.env.PERSONALITY_ENABLED === 'true';
+const DEFAULT_MOOD = process.env.DEFAULT_MOOD || 'focused';
   
-  // Phase 7: Web Dashboard Configuration
-  const DASHBOARD_URL = process.env.DASHBOARD_URL || `http://localhost:${API_PORT}`;
+// Phase 7: Web Dashboard Configuration
+const DASHBOARD_URL = process.env.DASHBOARD_URL || `http://localhost:${API_PORT}`;
+
+// New configuration for enhanced security monitoring
+const FAIL2BAN_CHECK_INTERVAL = parseInt(process.env.FAIL2BAN_CHECK_INTERVAL || '300000'); // Default: 5 minutes
+const HEALTH_CHECK_INTERVAL = parseInt(process.env.HEALTH_CHECK_INTERVAL || '1800000'); // Default: 30 minutes
+const BACKUP_ENCRYPTION_KEY = process.env.BACKUP_ENCRYPTION_KEY;
+const FULL_SENTINEL_MODE = process.env.FULL_SENTINEL_MODE === 'true' || true; // Force full sentinel mode
 
 const client = new Client({
   intents: [
@@ -185,6 +194,32 @@ client.once('ready', async () => {
     }
   }
   
+  // Set up Fail2Ban monitoring (new)
+  if (FULL_SENTINEL_MODE) {
+    try {
+      const fail2banMonitor = getFail2BanMonitor(client, NOTIFY_CHANNEL_ID, logEvent);
+      fail2banMonitor.start(FAIL2BAN_CHECK_INTERVAL);
+      console.log(`Fail2Ban monitoring started with check interval ${FAIL2BAN_CHECK_INTERVAL/1000} seconds`);
+      await logEvent('SECURITY', 'Fail2Ban monitoring system activated');
+    } catch (error) {
+      console.error('Error starting Fail2Ban monitoring:', error);
+    }
+  }
+  
+  // Set up Health Check monitoring (new)
+  if (FULL_SENTINEL_MODE) {
+    try {
+      const healthCheckMonitor = getHealthCheckMonitor(client, NOTIFY_CHANNEL_ID, logEvent);
+      healthCheckMonitor.start(HEALTH_CHECK_INTERVAL);
+      console.log(`Health check monitoring started with interval ${HEALTH_CHECK_INTERVAL/60000} minutes`);
+      await logEvent('SYSTEM', 'Health check monitoring system activated');
+    } catch (error) {
+
+  // Set up Disaster Recovery module (new)\n  if (FULL_SENTINEL_MODE) {\n    try {\n      const disasterRecovery = getDisasterRecovery(client, NOTIFY_CHANNEL_ID, logEvent, {\n        encryptionKey: BACKUP_ENCRYPTION_KEY\n      });\n      \n      // Register commands with command handler\n      if (typeof commandHandler !== "undefined") {\n        disasterRecovery.registerCommands(commandHandler);\n      }\n      \n      console.log("Disaster Recovery module initialized");\n      await logEvent("SYSTEM", "Disaster Recovery module initialized");\n      \n      // Set up default backup configuration if needed\n      if (RCLONE_BACKUP_ENABLED) {\n        const defaultConfig = {\n          id: "default",\n          name: "Default Backup",\n          source: ["./data/noxhime.db", "./logs", "DATABASE"],\n          destination: path.join(process.cwd(), "backups"),\n          schedule: RCLONE_SCHEDULE,\n          retention: 7,\n          encrypt: BACKUP_ENCRYPTION_KEY ? true : false,\n          remoteSync: true,\n          remotePath: RCLONE_REMOTE,\n          validate: true\n        };\n        \n        await disasterRecovery.addBackupConfig(defaultConfig);\n        console.log("Default backup configuration added");\n      }\n    } catch (error) {\n      console.error("Error initializing Disaster Recovery module:", error);\n    }\n  }
+      console.error('Error starting health check monitoring:', error);
+    }
+  }
+  
   // Phase 5: Initialize Personality Core
   if (PERSONALITY_ENABLED) {
     try {
@@ -200,21 +235,15 @@ client.once('ready', async () => {
     }
   }
   
-  // Initialize API server for web integration if enabled
-  const API_ENABLED = process.env.API_ENABLED === 'true';
-  const API_PORT = parseInt(process.env.API_PORT || '3000');
-  const API_KEYS = process.env.API_KEYS?.split(',') || [];
-  
-  if (API_ENABLED) {
-    try {
-      // Import here to prevent circular dependencies
-      const { startApiServer } = require('./api');
-      startApiServer(client, API_PORT, API_KEYS);
-      console.log(`API server started on port ${API_PORT} for web integration`);
-      await logEvent('SYSTEM', `API server started on port ${API_PORT}`);
-    } catch (error) {
-      console.error('Error starting API server:', error);
-    }
+  // Always initialize API server for web integration (Dashboard auto-start)
+  try {
+    // Import here to prevent circular dependencies
+    const { startApiServer } = require('./api');
+    startApiServer(client, API_PORT, API_KEYS);
+    console.log(`API server and web dashboard started on port ${API_PORT}`);
+    await logEvent('SYSTEM', `API server and web dashboard started on port ${API_PORT}`);
+  } catch (error) {
+    console.error('Error starting API server:', error);
   }
   
   // Send startup notification
@@ -234,17 +263,31 @@ client.once('ready', async () => {
           );
           
           startupEmbed.addFields(
-            { name: 'Version', value: '4.0.0 (Sentinel Update)', inline: true },
-            { name: 'Uptime', value: 'Just started', inline: true }
+            { name: 'Version', value: '4.0.0 (Sentinel Protector)', inline: true },
+            { name: 'Uptime', value: 'Just started', inline: true },
+            { name: 'Dashboard', value: DASHBOARD_URL, inline: true },
+            { name: 'Security Mode', value: FULL_SENTINEL_MODE ? 'Full Sentinel Protection' : 'Standard', inline: true }
           );
           
           await textChannel.send({
-            content: await personality.styleMessage('I am awake and operational.'),
+            content: await personality.styleMessage('I am awake and operational in Full Sentinel Protector Mode.'),
             embeds: [startupEmbed]
           });
         } else {
-          // Original startup message
-          await textChannel.send('Onii-chan, I\'m back up now!');
+          // Original startup message with enhanced information
+          const startupEmbed = new EmbedBuilder()
+            .setTitle('System Online')
+            .setDescription('Noxhime Bot is now active and operational in Full Sentinel Protector Mode.')
+            .setColor(0x00FF00)
+            .addFields(
+              { name: 'Version', value: '4.0.0 (Sentinel Protector)', inline: true },
+              { name: 'Uptime', value: 'Just started', inline: true },
+              { name: 'Dashboard', value: DASHBOARD_URL, inline: true },
+              { name: 'Security Mode', value: FULL_SENTINEL_MODE ? 'Full Sentinel Protection' : 'Standard', inline: true }
+            )
+            .setTimestamp();
+            
+          await textChannel.send({ embeds: [startupEmbed] });
         }
         
         // Create a recovery message if we can find evidence of a crash
@@ -288,7 +331,7 @@ client.once('ready', async () => {
           console.error('Error creating recovery message:', recoveryError);
         }
         
-        await logEvent('STARTUP', 'Bot successfully started and connected to Discord');
+        await logEvent('STARTUP', 'Bot successfully started and connected to Discord with Full Sentinel Protection');
       } else {
         console.log('Channel is not text-based');
       }
@@ -299,7 +342,7 @@ client.once('ready', async () => {
     console.log('No notify channel ID configured');
   }
 
-  console.log('Bot initialization complete with Sentinel Intelligence and Personality Core');
+  console.log('Bot initialization complete with Full Sentinel Protection, Dashboard Auto-start, and Enhanced Monitoring');
 });
 
 client.on('messageCreate', async (message) => {
@@ -352,6 +395,12 @@ client.on('messageCreate', async (message) => {
         
         // Add dashboard command
         commands.push(`\`${COMMAND_PREFIX}link\` – get web dashboard access token`);
+        
+        // Add Fail2Ban commands (new)
+        if (FULL_SENTINEL_MODE) {
+          commands.push(`\`${COMMAND_PREFIX}fail2ban\` – show Fail2Ban status`);
+          commands.push(`\`${COMMAND_PREFIX}healthcheck\` – trigger manual health check`);
+        }
         
         // Use personality system if enabled
         if (PERSONALITY_ENABLED) {
@@ -433,7 +482,7 @@ client.on('messageCreate', async (message) => {
           : null;
 
         if (auditChannel?.isTextBased()) {
-          await (auditChannel as TextChannel).send('Bot restart requested by user... 💤');
+          await (auditChannel as TextChannel).send('Bot restart requested by user... \U0001F4A4');
         }
 
         await message.channel.send('Restarting now. Please wait...');
@@ -473,11 +522,12 @@ client.on('messageCreate', async (message) => {
               
               // Create embed for token
               const embed = new EmbedBuilder()
-                .setTitle('🔗 Web Dashboard Access')
+                .setTitle('\U0001F517 Web Dashboard Access')
                 .setDescription('Here is your one-time access token for the web dashboard. This token will expire in 30 minutes.')
                 .setColor(0x3498DB)
                 .addFields(
                   { name: 'Token', value: `\`${response.data.token}\`` },
+                  { name: 'Dashboard URL', value: DASHBOARD_URL },
                   { name: 'Instructions', value: 'Go to the dashboard, paste this token, and click Authenticate.' }
                 )
                 .setTimestamp()
@@ -514,8 +564,10 @@ client.on('messageCreate', async (message) => {
               { name: 'Memory Usage', value: `${stats.memoryUsage.toFixed(1)}%`, inline: true },
               { name: 'Disk Usage', value: `${stats.diskUsage.toFixed(1)}%`, inline: true },
               { name: 'Uptime', value: stats.uptime, inline: true },
-              { name: 'Bot Status', value: '🟢 Online', inline: true },
-              { name: 'Monitoring', value: MONIT_ENABLED ? '✅ Active' : '❌ Disabled', inline: true }
+              { name: 'Bot Status', value: '\U0001F7E2 Online', inline: true },
+              { name: 'Dashboard', value: `[Open](${DASHBOARD_URL})`, inline: true },
+              { name: 'Monitoring', value: MONIT_ENABLED ? '✅ Active' : '❌ Disabled', inline: true },
+              { name: 'Security', value: FULL_SENTINEL_MODE ? '✅ Full Sentinel Protection' : '✅ Standard', inline: true }
             )
             .setTimestamp()
             .setFooter({ text: 'Noxhime Monitoring System' });
@@ -531,7 +583,7 @@ client.on('messageCreate', async (message) => {
       case 'heal':
 
         if (SELF_HEALING_ENABLED) {
-          await message.channel.send('🔄 Initiating self-healing routine...');
+          await message.channel.send('\U0001F504 Initiating self-healing routine...');
           const selfHeal = setupSelfHealing(logEvent);
           await selfHeal();
           await message.channel.send('✅ Self-healing complete. Memory optimized and systems checked.');
@@ -666,7 +718,7 @@ client.on('messageCreate', async (message) => {
               
               let allRunning = true;
               services.forEach(service => {
-                const statusEmoji = service.isRunning ? '🟢' : '🔴';
+                const statusEmoji = service.isRunning ? '\U0001F7E2' : '\U0001F534';
                 allRunning = allRunning && service.isRunning;
                 
                 embed.addFields({
@@ -740,7 +792,7 @@ client.on('messageCreate', async (message) => {
           
           embed.addFields(
             { name: 'How I Feel', value: moodDescription, inline: false },
-            { name: 'Made With', value: '💜 by NullMeDev', inline: false }
+            { name: 'Made With', value: '\U0001F49C by NullMeDev', inline: false }
           );
           
           await message.channel.send({ embeds: [embed] });
@@ -753,7 +805,7 @@ client.on('messageCreate', async (message) => {
       case 'backup':
 
         if (RCLONE_BACKUP_ENABLED && SENTINEL_ENABLED) {
-          await message.channel.send('🔄 Initiating manual backup process...');
+          await message.channel.send('\U0001F504 Initiating manual backup process...');
           
           try {
             const scriptPath = path.join(process.cwd(), 'scripts', 'backup.sh');
@@ -866,6 +918,84 @@ client.on('messageCreate', async (message) => {
         // Handle whitelist commands through the dedicated handler
         await handleWhitelistCommands(message, args);
         break;
+
+      // New command for Fail2Ban status (new)
+      case 'fail2ban':
+        if (FULL_SENTINEL_MODE) {
+          try {
+            const fail2banMonitor = getFail2BanMonitor(client, NOTIFY_CHANNEL_ID, logEvent);
+            const jails = await fail2banMonitor.getJailStatus();
+            
+            if (jails.length === 0) {
+              await message.channel.send('No Fail2Ban jails found on this system.');
+              return;
+            }
+            
+            const embed = new EmbedBuilder()
+              .setTitle('🛡️ Fail2Ban Status')
+              .setDescription('Current status of Fail2Ban security system')
+              .setColor(0x3498DB)
+              .setTimestamp();
+            
+            // Add jail status
+            jails.forEach(jail => {
+              const statusEmoji = jail.status === 'active' ? '🟢' : '🔴';
+              embed.addFields({
+                name: `${statusEmoji} ${jail.name}`,
+                value: `Status: ${jail.status}\nTotal banned: ${jail.totalBanned}\nCurrently banned: ${jail.bannedIPs.length} IPs`,
+                inline: true
+              });
+            });
+            
+            // Add summary
+            const activeJails = jails.filter(j => j.status === 'active').length;
+            const totalBanned = jails.reduce((sum, j) => sum + j.totalBanned, 0);
+            embed.addFields({
+              name: '📊 Summary',
+              value: `${activeJails} of ${jails.length} jails active\nTotal banned IPs: ${totalBanned}`
+            });
+            
+            await message.channel.send({ embeds: [embed] });
+            await logEvent('COMMAND', `User ${message.author.username} checked Fail2Ban status`);
+          } catch (error) {
+            console.error('Error fetching Fail2Ban status:', error);
+            await message.reply('Error retrieving Fail2Ban information.');
+          }
+        } else {
+          await message.reply('Full Sentinel Protector mode is not enabled.');
+        }
+        break;
+        
+      // New command for manual health check (new)
+      case 'healthcheck':
+        if (FULL_SENTINEL_MODE) {
+          try {
+            await message.channel.send('🔍 Running system health check...');
+            
+            const healthCheckMonitor = getHealthCheckMonitor(client, NOTIFY_CHANNEL_ID, logEvent);
+            
+            // Access the private method using any type to bypass TypeScript protection
+            const health = await (healthCheckMonitor as any).checkSystemHealth();
+            const issues = (healthCheckMonitor as any).detectIssues(health);
+            
+            if (issues.length > 0) {
+              await (healthCheckMonitor as any).sendHealthAlert(health, issues);
+              await message.channel.send(`⚠️ Health check complete. Found ${issues.length} issues. Check the notification channel for details.`);
+            } else {
+              // Send periodic update instead of full alert
+              await (healthCheckMonitor as any).sendPeriodicHealthUpdate(health);
+              await message.channel.send('✅ Health check complete. All systems normal.');
+            }
+            
+            await logEvent('COMMAND', `Manual health check triggered by ${message.author.username}`);
+          } catch (error) {
+            console.error('Error running health check:', error);
+            await message.reply('Error performing health check.');
+          }
+        } else {
+          await message.reply('Full Sentinel Protector mode is not enabled.');
+        }
+        break;
     }
   }
   
@@ -937,7 +1067,7 @@ async function gracefulShutdown(reason: string) {
     if (client.isReady() && NOTIFY_CHANNEL_ID) {
       const channel = await client.channels.fetch(NOTIFY_CHANNEL_ID);
       if (channel?.isTextBased()) {
-        await (channel as TextChannel).send(`🛑 Shutting down: ${reason}`);
+        await (channel as TextChannel).send(`\U0001F6D1 Shutting down: ${reason}`);
       }
     }
     

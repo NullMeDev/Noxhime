@@ -12,6 +12,8 @@ const monitor_1 = require("./monitor");
 const sentinel_1 = require("./sentinel");
 const personality_1 = require("./personality");
 const whitelist_commands_1 = require("./whitelist-commands");
+const fail2ban_1 = require("./fail2ban");
+const health_check_1 = require("./health-check");
 // Use require for modules with export issues
 const api = require('./api');
 const dbModule = require('./db');
@@ -77,7 +79,7 @@ const SYSTEM_STATS_INTERVAL = parseInt(process.env.SYSTEM_STATS_INTERVAL || '360
 const SENTINEL_ENABLED = process.env.SENTINEL_ENABLED === 'true';
 const SENTINEL_CHECK_INTERVAL = parseInt(process.env.SENTINEL_CHECK_INTERVAL || '60000'); // Default: 1 minute
 const RCLONE_BACKUP_ENABLED = process.env.RCLONE_BACKUP_ENABLED === 'true';
-const API_ENABLED = process.env.API_ENABLED === 'true';
+const API_ENABLED = process.env.API_ENABLED === 'true' || true; // Force API to be enabled
 const API_KEYS = process.env.API_KEYS?.split(',') || [];
 const RCLONE_REMOTE = process.env.RCLONE_REMOTE || 'gdrive:NoxhimeBackups';
 const RCLONE_SCHEDULE = process.env.RCLONE_SCHEDULE || '0 0 * * *'; // Default: Daily at midnight
@@ -86,6 +88,11 @@ const PERSONALITY_ENABLED = process.env.PERSONALITY_ENABLED === 'true';
 const DEFAULT_MOOD = process.env.DEFAULT_MOOD || 'focused';
 // Phase 7: Web Dashboard Configuration
 const DASHBOARD_URL = process.env.DASHBOARD_URL || `http://localhost:${API_PORT}`;
+// New configuration for enhanced security monitoring
+const FAIL2BAN_CHECK_INTERVAL = parseInt(process.env.FAIL2BAN_CHECK_INTERVAL || '300000'); // Default: 5 minutes
+const HEALTH_CHECK_INTERVAL = parseInt(process.env.HEALTH_CHECK_INTERVAL || '1800000'); // Default: 30 minutes
+const BACKUP_ENCRYPTION_KEY = process.env.BACKUP_ENCRYPTION_KEY;
+const FULL_SENTINEL_MODE = process.env.FULL_SENTINEL_MODE === 'true' || true; // Force full sentinel mode
 const client = new discord_js_1.Client({
     intents: [
         discord_js_1.GatewayIntentBits.Guilds,
@@ -159,6 +166,31 @@ client.once('ready', async () => {
             console.error('Error starting Sentinel Intelligence:', error);
         }
     }
+    // Set up Fail2Ban monitoring (new)
+    if (FULL_SENTINEL_MODE) {
+        try {
+            const fail2banMonitor = (0, fail2ban_1.getFail2BanMonitor)(client, NOTIFY_CHANNEL_ID, logEvent);
+            fail2banMonitor.start(FAIL2BAN_CHECK_INTERVAL);
+            console.log(`Fail2Ban monitoring started with check interval ${FAIL2BAN_CHECK_INTERVAL / 1000} seconds`);
+            await logEvent('SECURITY', 'Fail2Ban monitoring system activated');
+        }
+        catch (error) {
+            console.error('Error starting Fail2Ban monitoring:', error);
+        }
+    }
+    // Set up Health Check monitoring (new)
+    if (FULL_SENTINEL_MODE) {
+        try {
+            const healthCheckMonitor = (0, health_check_1.getHealthCheckMonitor)(client, NOTIFY_CHANNEL_ID, logEvent);
+            healthCheckMonitor.start(HEALTH_CHECK_INTERVAL);
+            console.log(`Health check monitoring started with interval ${HEALTH_CHECK_INTERVAL / 60000} minutes`);
+            await logEvent('SYSTEM', 'Health check monitoring system activated');
+        }
+        catch (error) {
+            // Set up Disaster Recovery module (new)\n  if (FULL_SENTINEL_MODE) {\n    try {\n      const disasterRecovery = getDisasterRecovery(client, NOTIFY_CHANNEL_ID, logEvent, {\n        encryptionKey: BACKUP_ENCRYPTION_KEY\n      });\n      \n      // Register commands with command handler\n      if (typeof commandHandler !== "undefined") {\n        disasterRecovery.registerCommands(commandHandler);\n      }\n      \n      console.log("Disaster Recovery module initialized");\n      await logEvent("SYSTEM", "Disaster Recovery module initialized");\n      \n      // Set up default backup configuration if needed\n      if (RCLONE_BACKUP_ENABLED) {\n        const defaultConfig = {\n          id: "default",\n          name: "Default Backup",\n          source: ["./data/noxhime.db", "./logs", "DATABASE"],\n          destination: path.join(process.cwd(), "backups"),\n          schedule: RCLONE_SCHEDULE,\n          retention: 7,\n          encrypt: BACKUP_ENCRYPTION_KEY ? true : false,\n          remoteSync: true,\n          remotePath: RCLONE_REMOTE,\n          validate: true\n        };\n        \n        await disasterRecovery.addBackupConfig(defaultConfig);\n        console.log("Default backup configuration added");\n      }\n    } catch (error) {\n      console.error("Error initializing Disaster Recovery module:", error);\n    }\n  }
+            console.error('Error starting health check monitoring:', error);
+        }
+    }
     // Phase 5: Initialize Personality Core
     if (PERSONALITY_ENABLED) {
         try {
@@ -173,21 +205,16 @@ client.once('ready', async () => {
             console.error('Error initializing Personality Core:', error);
         }
     }
-    // Initialize API server for web integration if enabled
-    const API_ENABLED = process.env.API_ENABLED === 'true';
-    const API_PORT = parseInt(process.env.API_PORT || '3000');
-    const API_KEYS = process.env.API_KEYS?.split(',') || [];
-    if (API_ENABLED) {
-        try {
-            // Import here to prevent circular dependencies
-            const { startApiServer } = require('./api');
-            startApiServer(client, API_PORT, API_KEYS);
-            console.log(`API server started on port ${API_PORT} for web integration`);
-            await logEvent('SYSTEM', `API server started on port ${API_PORT}`);
-        }
-        catch (error) {
-            console.error('Error starting API server:', error);
-        }
+    // Always initialize API server for web integration (Dashboard auto-start)
+    try {
+        // Import here to prevent circular dependencies
+        const { startApiServer } = require('./api');
+        startApiServer(client, API_PORT, API_KEYS);
+        console.log(`API server and web dashboard started on port ${API_PORT}`);
+        await logEvent('SYSTEM', `API server and web dashboard started on port ${API_PORT}`);
+    }
+    catch (error) {
+        console.error('Error starting API server:', error);
     }
     // Send startup notification
     if (NOTIFY_CHANNEL_ID) {
@@ -200,15 +227,21 @@ client.once('ready', async () => {
                     const personality = (0, personality_1.getPersonalityCore)();
                     const mood = personality.getMood();
                     const startupEmbed = personality.createStyledEmbed('System Online', 'Noxhime Bot is now active and operational.');
-                    startupEmbed.addFields({ name: 'Version', value: '4.0.0 (Sentinel Update)', inline: true }, { name: 'Uptime', value: 'Just started', inline: true });
+                    startupEmbed.addFields({ name: 'Version', value: '4.0.0 (Sentinel Protector)', inline: true }, { name: 'Uptime', value: 'Just started', inline: true }, { name: 'Dashboard', value: DASHBOARD_URL, inline: true }, { name: 'Security Mode', value: FULL_SENTINEL_MODE ? 'Full Sentinel Protection' : 'Standard', inline: true });
                     await textChannel.send({
-                        content: await personality.styleMessage('I am awake and operational.'),
+                        content: await personality.styleMessage('I am awake and operational in Full Sentinel Protector Mode.'),
                         embeds: [startupEmbed]
                     });
                 }
                 else {
-                    // Original startup message
-                    await textChannel.send('Onii-chan, I\'m back up now!');
+                    // Original startup message with enhanced information
+                    const startupEmbed = new discord_js_1.EmbedBuilder()
+                        .setTitle('System Online')
+                        .setDescription('Noxhime Bot is now active and operational in Full Sentinel Protector Mode.')
+                        .setColor(0x00FF00)
+                        .addFields({ name: 'Version', value: '4.0.0 (Sentinel Protector)', inline: true }, { name: 'Uptime', value: 'Just started', inline: true }, { name: 'Dashboard', value: DASHBOARD_URL, inline: true }, { name: 'Security Mode', value: FULL_SENTINEL_MODE ? 'Full Sentinel Protection' : 'Standard', inline: true })
+                        .setTimestamp();
+                    await textChannel.send({ embeds: [startupEmbed] });
                 }
                 // Create a recovery message if we can find evidence of a crash
                 try {
@@ -240,7 +273,7 @@ client.once('ready', async () => {
                 catch (recoveryError) {
                     console.error('Error creating recovery message:', recoveryError);
                 }
-                await logEvent('STARTUP', 'Bot successfully started and connected to Discord');
+                await logEvent('STARTUP', 'Bot successfully started and connected to Discord with Full Sentinel Protection');
             }
             else {
                 console.log('Channel is not text-based');
@@ -253,7 +286,7 @@ client.once('ready', async () => {
     else {
         console.log('No notify channel ID configured');
     }
-    console.log('Bot initialization complete with Sentinel Intelligence and Personality Core');
+    console.log('Bot initialization complete with Full Sentinel Protection, Dashboard Auto-start, and Enhanced Monitoring');
 });
 client.on('messageCreate', async (message) => {
     if (message.author.bot)
@@ -299,6 +332,11 @@ client.on('messageCreate', async (message) => {
                 ];
                 // Add dashboard command
                 commands.push(`\`${COMMAND_PREFIX}link\` – get web dashboard access token`);
+                // Add Fail2Ban commands (new)
+                if (FULL_SENTINEL_MODE) {
+                    commands.push(`\`${COMMAND_PREFIX}fail2ban\` – show Fail2Ban status`);
+                    commands.push(`\`${COMMAND_PREFIX}healthcheck\` – trigger manual health check`);
+                }
                 // Use personality system if enabled
                 if (PERSONALITY_ENABLED) {
                     const personality = (0, personality_1.getPersonalityCore)();
@@ -319,22 +357,48 @@ client.on('messageCreate', async (message) => {
                     return;
                 }
                 await message.channel.sendTyping();
-                let response = "AI response functionality has been removed.";
-                // Apply personality styling if enabled
-                if (PERSONALITY_ENABLED) {
-                    const personality = (0, personality_1.getPersonalityCore)();
-                    await personality.processEvent(personality_1.EventType.USER_INTERACTION, 5);
-                    response = await personality.styleMessage(response);
+                if (PERSONALITY_ENABLED && process.env.AI_ENABLED === 'true') {
+                    try {
+                        const personality = (0, personality_1.getPersonalityCore)();
+                        await personality.processEvent(personality_1.EventType.USER_INTERACTION, 5);
+                        // Get information about the server and channel for context
+                        const guildName = message.guild?.name || 'Direct Message';
+                        // Safely get channel name based on channel type
+                        const channelName = message.channel.type === discord_js_1.ChannelType.DM
+                            ? 'Direct Message'
+                            : 'name' in message.channel
+                                ? message.channel.name || 'Unknown Channel'
+                                : 'Unknown Channel';
+                        const contextInfo = `This conversation is taking place in ${guildName}, in channel: ${channelName}.`;
+                        // Generate AI response using DeepSeek-V3
+                        const response = await personality.generateAIResponse(question, message.author.id, contextInfo);
+                        await message.reply(response);
+                        await logEvent('COMMAND', `User ${message.author.username} asked: "${question.substring(0, 50)}${question.length > 50 ? '...' : ''}"`);
+                    }
+                    catch (error) {
+                        console.error('Error processing AI response:', error);
+                        await message.reply("I encountered an error while processing your question. Please try again later.");
+                        await logEvent('ERROR', `AI error for user ${message.author.username}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                    }
                 }
-                await message.reply(response);
-                await logEvent('COMMAND', `User ${message.author.username} asked a question, but AI is disabled`);
+                else {
+                    // Fallback if AI or personality is not enabled
+                    let response = "AI capabilities are not currently enabled.";
+                    // Apply personality styling if available
+                    if (PERSONALITY_ENABLED) {
+                        const personality = (0, personality_1.getPersonalityCore)();
+                        response = await personality.styleMessage(response);
+                    }
+                    await message.reply(response);
+                    await logEvent('COMMAND', `User ${message.author.username} asked a question, but AI is disabled`);
+                }
                 break;
             case 'restart':
                 const auditChannel = NOTIFY_CHANNEL_ID
                     ? await client.channels.fetch(NOTIFY_CHANNEL_ID)
                     : null;
                 if (auditChannel?.isTextBased()) {
-                    await auditChannel.send('Bot restart requested by user... 💤');
+                    await auditChannel.send('Bot restart requested by user... \U0001F4A4');
                 }
                 await message.channel.send('Restarting now. Please wait...');
                 await logEvent('ADMIN', `User ${message.author.username} initiated restart`);
@@ -365,10 +429,10 @@ client.on('messageCreate', async (message) => {
                             const dmChannel = await message.author.createDM();
                             // Create embed for token
                             const embed = new discord_js_1.EmbedBuilder()
-                                .setTitle('🔗 Web Dashboard Access')
+                                .setTitle('\U0001F517 Web Dashboard Access')
                                 .setDescription('Here is your one-time access token for the web dashboard. This token will expire in 30 minutes.')
                                 .setColor(0x3498DB)
-                                .addFields({ name: 'Token', value: `\`${response.data.token}\`` }, { name: 'Instructions', value: 'Go to the dashboard, paste this token, and click Authenticate.' })
+                                .addFields({ name: 'Token', value: `\`${response.data.token}\`` }, { name: 'Dashboard URL', value: DASHBOARD_URL }, { name: 'Instructions', value: 'Go to the dashboard, paste this token, and click Authenticate.' })
                                 .setTimestamp()
                                 .setFooter({ text: 'Noxhime Web Dashboard' });
                             // Send token via DM
@@ -397,7 +461,7 @@ client.on('messageCreate', async (message) => {
                         .setTitle('System Status')
                         .setDescription('Current system health and statistics')
                         .setColor(0x3498DB)
-                        .addFields({ name: 'CPU Usage', value: `${stats.cpuUsage.toFixed(1)}%`, inline: true }, { name: 'Memory Usage', value: `${stats.memoryUsage.toFixed(1)}%`, inline: true }, { name: 'Disk Usage', value: `${stats.diskUsage.toFixed(1)}%`, inline: true }, { name: 'Uptime', value: stats.uptime, inline: true }, { name: 'Bot Status', value: '🟢 Online', inline: true }, { name: 'Monitoring', value: MONIT_ENABLED ? '✅ Active' : '❌ Disabled', inline: true })
+                        .addFields({ name: 'CPU Usage', value: `${stats.cpuUsage.toFixed(1)}%`, inline: true }, { name: 'Memory Usage', value: `${stats.memoryUsage.toFixed(1)}%`, inline: true }, { name: 'Disk Usage', value: `${stats.diskUsage.toFixed(1)}%`, inline: true }, { name: 'Uptime', value: stats.uptime, inline: true }, { name: 'Bot Status', value: '\U0001F7E2 Online', inline: true }, { name: 'Dashboard', value: `[Open](${DASHBOARD_URL})`, inline: true }, { name: 'Monitoring', value: MONIT_ENABLED ? '✅ Active' : '❌ Disabled', inline: true }, { name: 'Security', value: FULL_SENTINEL_MODE ? '✅ Full Sentinel Protection' : '✅ Standard', inline: true })
                         .setTimestamp()
                         .setFooter({ text: 'Noxhime Monitoring System' });
                     await message.channel.send({ embeds: [embed] });
@@ -410,7 +474,7 @@ client.on('messageCreate', async (message) => {
                 break;
             case 'heal':
                 if (SELF_HEALING_ENABLED) {
-                    await message.channel.send('🔄 Initiating self-healing routine...');
+                    await message.channel.send('\U0001F504 Initiating self-healing routine...');
                     const selfHeal = (0, monitor_1.setupSelfHealing)(logEvent);
                     await selfHeal();
                     await message.channel.send('✅ Self-healing complete. Memory optimized and systems checked.');
@@ -517,7 +581,7 @@ client.on('messageCreate', async (message) => {
                             const embed = personality.createStyledEmbed('System Services Status', 'Current status of monitored services');
                             let allRunning = true;
                             services.forEach(service => {
-                                const statusEmoji = service.isRunning ? '🟢' : '🔴';
+                                const statusEmoji = service.isRunning ? '\U0001F7E2' : '\U0001F534';
                                 allRunning = allRunning && service.isRunning;
                                 embed.addFields({
                                     name: `${statusEmoji} ${service.name}`,
@@ -578,7 +642,7 @@ client.on('messageCreate', async (message) => {
                             moodDescription = 'I\'m in a no-nonsense mood right now.';
                             break;
                     }
-                    embed.addFields({ name: 'How I Feel', value: moodDescription, inline: false }, { name: 'Made With', value: '💜 by NullMeDev', inline: false });
+                    embed.addFields({ name: 'How I Feel', value: moodDescription, inline: false }, { name: 'Made With', value: '\U0001F49C by NullMeDev', inline: false });
                     await message.channel.send({ embeds: [embed] });
                     await logEvent('COMMAND', `User ${message.author.username} checked bot mood`);
                 }
@@ -588,7 +652,7 @@ client.on('messageCreate', async (message) => {
                 break;
             case 'backup':
                 if (RCLONE_BACKUP_ENABLED && SENTINEL_ENABLED) {
-                    await message.channel.send('🔄 Initiating manual backup process...');
+                    await message.channel.send('\U0001F504 Initiating manual backup process...');
                     try {
                         const scriptPath = path_1.default.join(process.cwd(), 'scripts', 'backup.sh');
                         if (fs_1.default.existsSync(scriptPath)) {
@@ -688,6 +752,78 @@ client.on('messageCreate', async (message) => {
                 // Handle whitelist commands through the dedicated handler
                 await (0, whitelist_commands_1.handleWhitelistCommands)(message, args);
                 break;
+            // New command for Fail2Ban status (new)
+            case 'fail2ban':
+                if (FULL_SENTINEL_MODE) {
+                    try {
+                        const fail2banMonitor = (0, fail2ban_1.getFail2BanMonitor)(client, NOTIFY_CHANNEL_ID, logEvent);
+                        const jails = await fail2banMonitor.getJailStatus();
+                        if (jails.length === 0) {
+                            await message.channel.send('No Fail2Ban jails found on this system.');
+                            return;
+                        }
+                        const embed = new discord_js_1.EmbedBuilder()
+                            .setTitle('🛡️ Fail2Ban Status')
+                            .setDescription('Current status of Fail2Ban security system')
+                            .setColor(0x3498DB)
+                            .setTimestamp();
+                        // Add jail status
+                        jails.forEach(jail => {
+                            const statusEmoji = jail.status === 'active' ? '🟢' : '🔴';
+                            embed.addFields({
+                                name: `${statusEmoji} ${jail.name}`,
+                                value: `Status: ${jail.status}\nTotal banned: ${jail.totalBanned}\nCurrently banned: ${jail.bannedIPs.length} IPs`,
+                                inline: true
+                            });
+                        });
+                        // Add summary
+                        const activeJails = jails.filter(j => j.status === 'active').length;
+                        const totalBanned = jails.reduce((sum, j) => sum + j.totalBanned, 0);
+                        embed.addFields({
+                            name: '📊 Summary',
+                            value: `${activeJails} of ${jails.length} jails active\nTotal banned IPs: ${totalBanned}`
+                        });
+                        await message.channel.send({ embeds: [embed] });
+                        await logEvent('COMMAND', `User ${message.author.username} checked Fail2Ban status`);
+                    }
+                    catch (error) {
+                        console.error('Error fetching Fail2Ban status:', error);
+                        await message.reply('Error retrieving Fail2Ban information.');
+                    }
+                }
+                else {
+                    await message.reply('Full Sentinel Protector mode is not enabled.');
+                }
+                break;
+            // New command for manual health check (new)
+            case 'healthcheck':
+                if (FULL_SENTINEL_MODE) {
+                    try {
+                        await message.channel.send('🔍 Running system health check...');
+                        const healthCheckMonitor = (0, health_check_1.getHealthCheckMonitor)(client, NOTIFY_CHANNEL_ID, logEvent);
+                        // Access the private method using any type to bypass TypeScript protection
+                        const health = await healthCheckMonitor.checkSystemHealth();
+                        const issues = healthCheckMonitor.detectIssues(health);
+                        if (issues.length > 0) {
+                            await healthCheckMonitor.sendHealthAlert(health, issues);
+                            await message.channel.send(`⚠️ Health check complete. Found ${issues.length} issues. Check the notification channel for details.`);
+                        }
+                        else {
+                            // Send periodic update instead of full alert
+                            await healthCheckMonitor.sendPeriodicHealthUpdate(health);
+                            await message.channel.send('✅ Health check complete. All systems normal.');
+                        }
+                        await logEvent('COMMAND', `Manual health check triggered by ${message.author.username}`);
+                    }
+                    catch (error) {
+                        console.error('Error running health check:', error);
+                        await message.reply('Error performing health check.');
+                    }
+                }
+                else {
+                    await message.reply('Full Sentinel Protector mode is not enabled.');
+                }
+                break;
         }
     }
     // Respond when mentioned
@@ -696,15 +832,43 @@ client.on('messageCreate', async (message) => {
         const questionText = content.replace(new RegExp(`<@!?${client.user.id}>`), '').trim();
         if (questionText) {
             await message.channel.sendTyping();
-            let response = "Hi there! The AI response feature has been removed.";
-            // Apply personality styling if enabled
-            if (PERSONALITY_ENABLED) {
-                const personality = (0, personality_1.getPersonalityCore)();
-                await personality.processEvent(personality_1.EventType.USER_INTERACTION, 6);
-                response = await personality.styleMessage(response);
+            if (PERSONALITY_ENABLED && process.env.AI_ENABLED === 'true') {
+                try {
+                    const personality = (0, personality_1.getPersonalityCore)();
+                    await personality.processEvent(personality_1.EventType.USER_INTERACTION, 6);
+                    // Get information about the server and channel for context
+                    const guildName = message.guild?.name || 'Direct Message';
+                    // Safely get channel name based on channel type
+                    const channelName = message.channel.type === discord_js_1.ChannelType.DM
+                        ? 'Direct Message'
+                        : 'name' in message.channel
+                            ? message.channel.name || 'Unknown Channel'
+                            : 'Unknown Channel';
+                    const contextInfo = `This conversation is taking place in ${guildName}, in channel: ${channelName}. 
+          The user has mentioned you directly in their message.`;
+                    // Generate AI response using DeepSeek-V3
+                    const response = await personality.generateAIResponse(questionText, message.author.id, contextInfo);
+                    await message.reply(response);
+                    await logEvent('MENTION', `User ${message.author.username} mentioned bot and said: ${questionText.substring(0, 50)}${questionText.length > 50 ? '...' : ''}`);
+                }
+                catch (error) {
+                    console.error('Error processing AI response for mention:', error);
+                    await message.reply("I encountered an error while processing your message. Please try again later.");
+                    await logEvent('ERROR', `AI error for mention by ${message.author.username}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                }
             }
-            await message.reply(response);
-            await logEvent('MENTION', `User ${message.author.username} mentioned bot and said: ${questionText}`);
+            else {
+                // Fallback if AI or personality is not enabled
+                let response = "Hi there! AI capabilities are not currently enabled.";
+                // Apply personality styling if available
+                if (PERSONALITY_ENABLED) {
+                    const personality = (0, personality_1.getPersonalityCore)();
+                    await personality.processEvent(personality_1.EventType.USER_INTERACTION, 6);
+                    response = await personality.styleMessage(response);
+                }
+                await message.reply(response);
+                await logEvent('MENTION', `User ${message.author.username} mentioned bot and said: ${questionText}`);
+            }
         }
     }
 });
@@ -718,7 +882,7 @@ async function gracefulShutdown(reason) {
         if (client.isReady() && NOTIFY_CHANNEL_ID) {
             const channel = await client.channels.fetch(NOTIFY_CHANNEL_ID);
             if (channel?.isTextBased()) {
-                await channel.send(`🛑 Shutting down: ${reason}`);
+                await channel.send(`\U0001F6D1 Shutting down: ${reason}`);
             }
         }
         // Close database connection

@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PersonalityCore = exports.EventType = void 0;
 exports.getPersonalityCore = getPersonalityCore;
 const discord_js_1 = require("discord.js");
+const ai_integration_1 = require("./ai-integration");
 // Use require instead of import for db to avoid circular dependencies
 const db = require('./db');
 const { getCurrentMood, setMood } = db;
@@ -21,6 +22,7 @@ var EventType;
  */
 class PersonalityCore {
     constructor() {
+        this.aiIntegration = null;
         this.settings = {
             defaultMood: 'focused',
             responsiveness: 7,
@@ -46,6 +48,12 @@ class PersonalityCore {
             else {
                 // Set default mood
                 await this.changeMood(this.settings.defaultMood, 'initialization', 5);
+            }
+            // Initialize AI integration if enabled
+            if (process.env.AI_ENABLED === 'true') {
+                this.aiIntegration = (0, ai_integration_1.getAIIntegration)();
+                this.aiIntegration.setPersonalityCore(this);
+                console.log('AI Integration initialized with DeepSeek-V3 model');
             }
         }
         catch (error) {
@@ -288,6 +296,44 @@ class PersonalityCore {
             mood: this.currentMood,
             intensity: this.moodIntensity
         };
+    }
+    /**
+     * Generate an AI response using DeepSeek-V3
+     *
+     * @param question The user's question or input
+     * @param userId The user's ID for conversation tracking
+     * @param contextInfo Optional context information
+     * @returns AI-generated response styled according to mood
+     */
+    async generateAIResponse(question, userId, contextInfo) {
+        // Check if AI integration is enabled and configured
+        if (!this.aiIntegration || !process.env.AI_ENABLED === true) {
+            return "AI capabilities are not currently enabled. Please check the configuration.";
+        }
+        try {
+            // Generate AI response using DeepSeek-V3
+            const response = await this.aiIntegration.generateResponse(question, userId, contextInfo);
+            // Style the response according to current mood
+            return await this.styleMessage(response);
+        }
+        catch (error) {
+            console.error('Error generating AI response:', error);
+            return "I'm having trouble connecting to my AI brain right now. Please try again later.";
+        }
+    }
+    /**
+     * Check if AI capabilities are enabled
+     */
+    isAIEnabled() {
+        return this.aiIntegration !== null && process.env.AI_ENABLED === 'true';
+    }
+    /**
+     * Clear conversation history for a user
+     */
+    clearUserConversation(userId) {
+        if (this.aiIntegration) {
+            this.aiIntegration.clearConversation(userId);
+        }
     }
 }
 exports.PersonalityCore = PersonalityCore;
