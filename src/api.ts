@@ -1,5 +1,5 @@
 import express from 'express';
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
 import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
@@ -12,7 +12,6 @@ import { getSentinel } from './sentinel';
 import { getPersonalityCore } from './personality';
 import * as db from './db';
 import { loadWhitelistConfig, whitelistMiddleware } from './whitelist';
-import { getBioLock } from './biolock';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -142,17 +141,7 @@ export class ApiServer {
       // Handle command triggers
       socket.on('triggerCommand', async (command: string) => {
         try {
-          // Verify user has BioLock permissions
-          const biolock = getBioLock(this.client);
-          const state = await biolock.checkUserSession(discordId);
-          
-          if (state !== 'unlocked' && state !== 'override') {
-            socket.emit('commandResult', { 
-              success: false, 
-              message: 'Authentication required. Please use !unlock in Discord.'
-            });
-            return;
-          }
+          // Authorization is now handled via JWT only (BioLock removed)
           
           switch (command) {
             case 'restart':
@@ -327,7 +316,7 @@ export class ApiServer {
    * Generate a JWT token for user authentication
    */
   private generateToken(discordId: string, expiresIn: string = '30m'): string {
-    return jwt.sign({ discordId }, this.jwtSecret, { expiresIn });
+    return jwt.sign({ discordId }, this.jwtSecret as jwt.Secret, { expiresIn });
   }
   
   /**
@@ -365,12 +354,12 @@ export class ApiServer {
    */
   private setupRoutes(): void {
     // Serve the main dashboard page
-    this.app.get('/', (req: Request, res: Response) => {
+    this.app.get('/', (req: Request, res: Response): void => {
       res.sendFile(path.join(process.cwd(), 'web', 'public', 'index.html'));
     });
     
     // Authentication endpoints
-    this.app.post('/api/auth/verify-token', (req: Request, res: Response) => {
+    this.app.post('/api/auth/verify-token', (req: Request, res: Response): Response | void => {
       try {
         const { token } = req.body;
         
@@ -400,7 +389,7 @@ export class ApiServer {
     });
     
     // Discord link command handler (called from Discord bot)
-    this.app.post('/api/auth/create-link', (req: Request, res: Response) => {
+    this.app.post('/api/auth/create-link', (req: Request, res: Response): Response | void => {
       try {
         const { discordId, apiKey } = req.body;
         
@@ -425,7 +414,7 @@ export class ApiServer {
     });
     
     // Public status endpoint (no auth required)
-    this.app.get('/api/status/public', (req: Request, res: Response) => {
+    this.app.get('/api/status/public', (req: Request, res: Response): void => {
       res.json({
         status: 'online',
         name: this.client.user?.username || 'Noxhime',
@@ -435,7 +424,7 @@ export class ApiServer {
     });
     
     // Bot status endpoint
-    this.app.get('/api/status', (req: Request, res: Response) => {
+    this.app.get('/api/status', (req: Request, res: Response): Response | void => {
       try {
         const stats = {
           status: 'online',
@@ -448,12 +437,12 @@ export class ApiServer {
         res.json(stats);
       } catch (error) {
         console.error('API error:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
       }
     });
     
     // Sentinel incidents endpoint
-    this.app.get('/api/incidents', async (req: Request, res: Response) => {
+    this.app.get('/api/incidents', async (req: Request, res: Response): Promise<Response | void> => {
       try {
         const limit = parseInt(req.query.limit as string || '10');
         const incidents = await db.getRecentIncidents(limit);
@@ -466,7 +455,7 @@ export class ApiServer {
     });
     
     // Service status endpoint
-    this.app.get('/api/services', async (req: Request, res: Response) => {
+    this.app.get('/api/services', async (req: Request, res: Response): Promise<Response | void> => {
       try {
         const sentinel = getSentinel(this.client, '');
         const services = await sentinel.getServicesStatus();
@@ -479,7 +468,7 @@ export class ApiServer {
     });
     
     // Personality/mood endpoint
-    this.app.get('/api/mood', async (req: Request, res: Response) => {
+    this.app.get('/api/mood', async (req: Request, res: Response): Promise<Response | void> => {
       try {
         const personality = getPersonalityCore();
         const mood = personality.getMood();
@@ -497,7 +486,7 @@ export class ApiServer {
     });
     
     // Stats and logs endpoint
-    this.app.get('/api/logs', async (req: Request, res: Response) => {
+    this.app.get('/api/logs', async (req: Request, res: Response): Promise<Response | void> => {
       try {
         const type = req.query.type as string || 'all';
         const limit = parseInt(req.query.limit as string || '20');
@@ -523,7 +512,7 @@ export class ApiServer {
     });
     
     // Trigger manual backup endpoint
-    this.app.post('/api/backup', (req: Request, res: Response): void => {
+    this.app.post('/api/backup', (req: Request, res: Response): Response | void => {
       try {
         const scriptPath = path.join(process.cwd(), 'scripts', 'backup.sh');
         if (!fs.existsSync(scriptPath)) {

@@ -1,6 +1,6 @@
 {
   "name": "noxhime-bot",
-  "version": "3.1.0",
+  "version": "4.0.0",
   "engines": {
     "node": "18.x"
   },
@@ -10,7 +10,9 @@
     "build": "tsc && npm run build:web",
     "monitor": "node dist/monitor-cli.js",
     "build:web": "npx tailwindcss -i ./web/src/styles.css -o ./web/public/styles.css",
-    "test-alert": "curl -X POST http://localhost:5000/alert -H 'Content-Type: application/json' -d '{\"title\": \"Test Alert\", \"body\": \"This is a test alert from the command line\", \"severity\": \"info\"}'"
+    "test-alert": "curl -X POST http://localhost:5000/alert -H 'Content-Type: application/json' -d '{\"title\": \"Test Alert\", \"body\": \"This is a test alert from the command line\", \"severity\": \"info\"}'",
+    "migrate": "node dist/db/migrate.js",
+    "test": "node test-smoke.js"
   },
   "devDependencies": {
     "@types/express": "^5.0.2",
@@ -29,14 +31,13 @@
     "dotenv": "^16.3.1",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.1",
-    "openai": "^4.24.1",
     "socket.io": "^4.7.1",
     "sqlite3": "^5.1.6",
     "axios": "^1.7.7",
     "node-cron": "^3.0.3",
     "bcrypt": "^5.1.1"
   },
-  "description": "Autonomous Discord bot with system monitoring and OpenAI integration.",
+  "description": "Autonomous Discord bot with system monitoring capabilities.",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/NullMeDev/noxhime-bot.git"

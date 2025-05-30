@@ -1,5 +1,4 @@
 import { Client, GatewayIntentBits, ChannelType, TextChannel, EmbedBuilder } from 'discord.js';
-import OpenAI from 'openai';
 import dotenv from 'dotenv';
 import sqlite3 from 'sqlite3';
 import path from 'path';
@@ -15,7 +14,6 @@ import {
 import { getSentinel } from './sentinel';
 import { getPersonalityCore, EventType } from './personality';
 import { handleWhitelistCommands } from './whitelist-commands';
-import { getBioLock, BioLockState } from './biolock';
 
 // Use require for modules with export issues
 const api = require('./api');
@@ -78,8 +76,6 @@ async function logEvent(type: string, description: string): Promise<boolean> {
 }
 
 const NOTIFY_CHANNEL_ID = process.env.NOTIFY_CHANNEL_ID || '';
-const BIOLOCK_ENABLED = process.env.BIOLOCK_ENABLED === 'true'; // Enable BioLock v2
-const BIOLOCK_OVERRIDE_KEY = process.env.BIOLOCK_OVERRIDE_KEY;
 const COMMAND_PREFIX = process.env.COMMAND_PREFIX || '!';
 const MONIT_ENABLED = process.env.MONIT_ENABLED === 'true';
 const MONIT_PORT = parseInt(process.env.MONIT_PORT || '5000');
@@ -101,13 +97,8 @@ const RCLONE_SCHEDULE = process.env.RCLONE_SCHEDULE || '0 0 * * *'; // Default: 
   const PERSONALITY_ENABLED = process.env.PERSONALITY_ENABLED === 'true';
   const DEFAULT_MOOD = process.env.DEFAULT_MOOD || 'focused';
   
-  // Phase 6: BioLock v2 Configuration
-  const BIOLOCK_SESSION_TIMEOUT = parseInt(process.env.BIOLOCK_SESSION_TIMEOUT || '60'); // Default: 60 minutes
-
   // Phase 7: Web Dashboard Configuration
   const DASHBOARD_URL = process.env.DASHBOARD_URL || `http://localhost:${API_PORT}`;
-
-// BioLock v2 will be initialized in the ready event
 
 const client = new Client({
   intents: [
@@ -116,28 +107,6 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
   ],
 });
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-// Function to use OpenAI for chat responses
-async function generateAIResponse(prompt: string): Promise<string> {
-  try {
-    const completion = await openai.chat.completions.create({
-      messages: [
-        { role: "system", content: "You are Noxhime, a helpful Discord bot with a friendly but slightly mischievous personality. You help users with information and assistance." },
-        { role: "user", content: prompt }
-      ],
-      model: "gpt-3.5-turbo",
-    });
-    
-    return completion.choices[0].message.content || "I don't have a response for that.";
-  } catch (error) {
-    console.error('Error generating AI response:', error);
-    return "I'm having trouble thinking right now. Please try again later.";
-  }
-}
 
 client.once('ready', async () => {
   console.log(`Logged in as ${client.user?.tag}!`);
@@ -330,18 +299,7 @@ client.once('ready', async () => {
     console.log('No notify channel ID configured');
   }
 
-  // Phase 6: Initialize BioLock v2
-  if (BIOLOCK_ENABLED) {
-    try {
-      const biolock = getBioLock(client);
-      console.log('BioLock v2 security system initialized');
-      await logEvent('SYSTEM', 'BioLock v2 security system initialized');
-    } catch (error) {
-      console.error('Error initializing BioLock v2:', error);
-    }
-  }
-
-  console.log('Bot initialization complete with Sentinel Intelligence, Personality Core, and BioLock v2');
+  console.log('Bot initialization complete with Sentinel Intelligence and Personality Core');
 });
 
 client.on('messageCreate', async (message) => {
@@ -392,16 +350,8 @@ client.on('messageCreate', async (message) => {
           `\`${COMMAND_PREFIX}whitelist <action>\` – manage server whitelisting`
         ];
         
-        // Add BioLock commands if enabled
-        if (BIOLOCK_ENABLED) {
-          const biolockCommands = [
-            `\`${COMMAND_PREFIX}lock\` – lock your BioLock session`,
-            `\`${COMMAND_PREFIX}unlock\` – authenticate with BioLock`,
-            `\`${COMMAND_PREFIX}override [passphrase]\` – emergency override`,
-            `\`${COMMAND_PREFIX}link\` – get web dashboard access token`
-          ];
-          commands.push(...biolockCommands);
-        }
+        // Add dashboard command
+        commands.push(`\`${COMMAND_PREFIX}link\` – get web dashboard access token`);
         
         // Use personality system if enabled
         if (PERSONALITY_ENABLED) {
@@ -431,7 +381,7 @@ client.on('messageCreate', async (message) => {
         }
         
         await message.channel.sendTyping();
-        let response = await generateAIResponse(question);
+        let response = "AI response functionality has been removed.";
         
         // Apply personality styling if enabled
         if (PERSONALITY_ENABLED) {
@@ -441,18 +391,10 @@ client.on('messageCreate', async (message) => {
         }
         
         await message.reply(response);
-        await logEvent('AI_QUERY', `User ${message.author.username} asked: ${question}`);
+        await logEvent('COMMAND', `User ${message.author.username} asked a question, but AI is disabled`);
         break;
         
       case 'restart':
-        // Check BioLock authentication if enabled
-        if (BIOLOCK_ENABLED) {
-          const biolock = getBioLock(client);
-          const isAllowed = await biolock.isCommandAllowed(message, 'restart');
-          if (!isAllowed) {
-            return; // The BioLock middleware already sent a message
-          }
-        }
 
         const auditChannel = NOTIFY_CHANNEL_ID
           ? await client.channels.fetch(NOTIFY_CHANNEL_ID)
@@ -467,32 +409,7 @@ client.on('messageCreate', async (message) => {
         process.exit(0);
         break;
         
-      case 'lock':
-        if (BIOLOCK_ENABLED) {
-          const biolock = getBioLock(client);
-          await biolock.handleLockCommand(message);
-        } else {
-          await message.reply("BioLock is not enabled on this bot.");
-        }
-        break;
-        
-      case 'unlock':
-        if (BIOLOCK_ENABLED) {
-          const biolock = getBioLock(client);
-          await biolock.handleUnlockCommand(message);
-        } else {
-          await message.reply("BioLock is not enabled on this bot.");
-        }
-        break;
-        
-      case 'override':
-        if (BIOLOCK_ENABLED) {
-          const biolock = getBioLock(client);
-          await biolock.handleOverrideCommand(message, args);
-        } else {
-          await message.reply("BioLock is not enabled on this bot.");
-        }
-        break;
+      // Biolock commands have been removed
         
       case 'link':
         try {
@@ -502,18 +419,7 @@ client.on('messageCreate', async (message) => {
             return;
           }
           
-          // Check BioLock authentication if enabled
-          // Note: We may or may not want to require BioLock for this command
-          // If we do require it, uncomment the following code:
-          /*
-          if (BIOLOCK_ENABLED) {
-            const biolock = getBioLock(client);
-            const isAllowed = await biolock.isCommandAllowed(message, 'link');
-            if (!isAllowed) {
-              return; // The BioLock middleware already sent a message
-            }
-          }
-          */
+          // Authentication no longer required with Biolock removed
           
           // Reply in the channel
           await message.reply("I'm sending you a link token via DM. Please check your private messages.");
@@ -591,14 +497,6 @@ client.on('messageCreate', async (message) => {
         break;
         
       case 'heal':
-        // Check BioLock authentication if enabled
-        if (BIOLOCK_ENABLED) {
-          const biolock = getBioLock(client);
-          const isAllowed = await biolock.isCommandAllowed(message, 'heal');
-          if (!isAllowed) {
-            return; // The BioLock middleware already sent a message
-          }
-        }
 
         if (SELF_HEALING_ENABLED) {
           await message.channel.send('🔄 Initiating self-healing routine...');
@@ -821,14 +719,6 @@ client.on('messageCreate', async (message) => {
         break;
       
       case 'backup':
-        // Check BioLock authentication if enabled
-        if (BIOLOCK_ENABLED) {
-          const biolock = getBioLock(client);
-          const isAllowed = await biolock.isCommandAllowed(message, 'backup');
-          if (!isAllowed) {
-            return; // The BioLock middleware already sent a message
-          }
-        }
 
         if (RCLONE_BACKUP_ENABLED && SENTINEL_ENABLED) {
           await message.channel.send('🔄 Initiating manual backup process...');
@@ -864,14 +754,6 @@ client.on('messageCreate', async (message) => {
         break;
       
       case 'sentinel':
-        // Check BioLock authentication if enabled
-        if (BIOLOCK_ENABLED) {
-          const biolock = getBioLock(client);
-          const isAllowed = await biolock.isCommandAllowed(message, 'sentinel');
-          if (!isAllowed) {
-            return; // The BioLock middleware already sent a message
-          }
-        }
 
         const action = args[0]?.toLowerCase();
         
@@ -948,14 +830,6 @@ client.on('messageCreate', async (message) => {
         break;
         
       case 'whitelist':
-        // Check BioLock authentication if enabled
-        if (BIOLOCK_ENABLED) {
-          const biolock = getBioLock(client);
-          const isAllowed = await biolock.isCommandAllowed(message, 'whitelist');
-          if (!isAllowed) {
-            return; // The BioLock middleware already sent a message
-          }
-        }
 
         // Handle whitelist commands through the dedicated handler
         await handleWhitelistCommands(message, args);
@@ -963,14 +837,14 @@ client.on('messageCreate', async (message) => {
     }
   }
   
-  // AI Chat - respond when mentioned
+  // Respond when mentioned
   if (message.mentions.has(client.user!.id) && isTextChannel) {
     // Extract the actual question by removing the mention
     const questionText = content.replace(new RegExp(`<@!?${client.user!.id}>`), '').trim();
     
     if (questionText) {
       await message.channel.sendTyping();
-      let response = await generateAIResponse(questionText);
+      let response = "Hi there! The AI response feature has been removed.";
       
       // Apply personality styling if enabled
       if (PERSONALITY_ENABLED) {
@@ -980,7 +854,7 @@ client.on('messageCreate', async (message) => {
       }
       
       await message.reply(response);
-      await logEvent('AI_MENTION', `User ${message.author.username} mentioned bot and said: ${questionText}`);
+      await logEvent('MENTION', `User ${message.author.username} mentioned bot and said: ${questionText}`);
     }
   }
 });

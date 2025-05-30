@@ -33,6 +33,16 @@ interface ServiceStatus {
 }
 
 /**
+ * Interface for System Statistics
+ */
+interface SystemStats {
+  cpuUsage: number;
+  memoryUsage: number;
+  diskUsage: number;
+  uptime: string;
+}
+
+/**
  * Class for Sentinel Intelligence monitoring
  */
 export class SentinelIntelligence {
@@ -333,6 +343,44 @@ export class SentinelIntelligence {
     }
     
     return result;
+  }
+  
+  /**
+   * Get system statistics including CPU, memory, disk usage and uptime
+   */
+  public async getSystemStats(): Promise<SystemStats> {
+    try {
+      // Get CPU usage
+      const { stdout: cpuOut } = await execAsync("top -b -n1 | grep 'Cpu(s)' | awk '{print $2 + $4}'");
+      const cpuUsage = parseFloat(cpuOut.trim());
+      
+      // Get memory usage
+      const { stdout: memOut } = await execAsync("free | grep Mem | awk '{print $3/$2 * 100.0}'");
+      const memoryUsage = parseFloat(memOut.trim());
+      
+      // Get disk usage
+      const { stdout: diskOut } = await execAsync("df -h / | grep / | awk '{print $5}' | sed 's/%//'");
+      const diskUsage = parseFloat(diskOut.trim());
+      
+      // Get uptime
+      const uptime = await this.getSystemUptime();
+      
+      return {
+        cpuUsage,
+        memoryUsage,
+        diskUsage,
+        uptime
+      };
+    } catch (error) {
+      console.error('Error getting system stats:', error);
+      // Return fallback values if we can't get actual stats
+      return {
+        cpuUsage: 0,
+        memoryUsage: 0,
+        diskUsage: 0,
+        uptime: 'Unknown'
+      };
+    }
   }
   
   /**

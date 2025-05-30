@@ -1,17 +1,11 @@
 # Noxhime Bot
 
-**Free and Open** Discord bot with system monitoring, security intelligence, IP/Port whitelisting, and OpenAI integration with evolving personality.
+**Free and Open** Discord bot with system monitoring, security intelligence, IP/Port whitelisting, and evolving personality.
 
 ## Features
 
-- **Open Access** - Free for everyone to use with user-level security
+- **Open Access** - Free for everyone to use
 - Discord integration with comprehensive command system
-- OpenAI-powered chat responses
-- **BioLock v2** - User-level authentication for sensitive commands
-  - Individual user authentication via Discord DMs
-  - Emergency override capabilities
-  - Session management and timeouts
-  - Audit logging for security events
 - **Real-time Web Dashboard** - Monitor and control your bot
   - System status tiles with real-time updates
   - Command trigger panel for remote administration
@@ -30,76 +24,97 @@
 - Sentinel Intelligence with log monitoring and suspicious behavior detection
 - Automated backup system with Rclone integration
 - Evolving Personality Core with mood-based responses
-- **Optimized for Ubuntu 24.04** with Node.js 18.x
+- **Node.js 18.x** compatible
 
 ## Setup Instructions
 
-### Option 1: Ubuntu 24.04 Installer (Recommended)
+### Simple Installation
 
-Use our optimized installer script for Ubuntu 24.04 with Node.js 18.x:
+Use our simplified installer script:
 
 ```bash
-chmod +x install-ubuntu24.sh
-./install-ubuntu24.sh
+sudo APP_NAME=noxhime-bot bash install.sh
 ```
 
 This will:
-- Check for Ubuntu 24.04 compatibility
-- Install Node.js 18.x (if not already installed)
-- Skip already installed packages for faster setup
-- Clone the repository
-- Install all dependencies
-- Create the database
-- Guide you through configuration with interactive prompts
-- Configure IP/Port whitelisting for enhanced security
-- Set up systemd services and monitoring
-- Build the web dashboard
+- Install required dependencies
+- Install the application to /opt/noxhime-bot
+- Build the application
+- Run database migrations
 
-The installer supports several options:
+After installation, edit the configuration file:
 ```bash
-./install-ubuntu24.sh --dir=/path/to/install --no-systemd --no-start --verbose
+sudo nano /opt/noxhime-bot/.env
 ```
 
-### Option 2: Cleanup After Installation
+### Docker Installation
 
-After installation, run the cleanup script to optimize your installation:
+A Dockerfile is included for containerized deployment:
 
+1. Build the Docker image:
 ```bash
-chmod +x cleanup.sh
-./cleanup.sh
+docker build -t noxhime-bot .
 ```
 
-This will:
-- Remove unnecessary files
-- Optimize dependencies
-- Ensure Node.js 18.x compatibility
-- Verify the installation works correctly
+2. Run the container:
+```bash
+docker run -d --name noxhime \
+  -e DISCORD_TOKEN=your_token_here \
+  -e CLIENT_ID=your_client_id \
+  -e NOTIFY_CHANNEL_ID=your_channel_id \
+  -v noxhime-data:/app/data \
+  noxhime-bot
+```
 
-### Option 3: Manual Installation
+3. For easier development and testing, use Docker Compose:
+
+```bash
+# Copy the example .env file if you haven't already
+cp .env.example .env
+
+# Edit the .env file with your Discord credentials
+nano .env
+
+# Start the application with Docker Compose
+docker-compose up -d
+
+# View logs in real-time
+docker-compose logs -f
+
+# To stop the application
+docker-compose down
+```
+
+The included `docker-compose.yml` configures:
+- Environment variables from your .env file
+- Data persistence with volumes
+- Exposed ports for the web dashboard (3000) and monitoring (5000)
+- Development-friendly configuration options
+
+### Manual Installation
 
 1. Clone this repository
 2. Install dependencies: `npm install`
 3. Copy `.env.example` to `.env` and fill in your credentials:
    - Discord Bot Token
-   - OpenAI API Key
+   - Discord Client ID
    - Discord Channel ID for notifications
    - Monitoring settings
    - Sentinel Intelligence settings
    - Personality Core settings
-   - **Note**: No owner ID needed - bot is open access
 4. Install required system tools:
    ```
    sudo apt update
    sudo apt install -y monit fail2ban rclone
    ```
-5. Configure Rclone for remote backups:
+5. Configure Rclone for remote backups (optional):
    ```
    rclone config
    # Follow the prompts to set up your desired remote (e.g., Google Drive)
    ```
-6. Run the monitoring setup script:
+6. Build the application:
    ```
-   sudo bash ./scripts/setup-monitoring.sh
+   npm run build
    ```
 7. Run the bot with PM2 for auto-restart:
    ```
@@ -109,17 +124,6 @@ This will:
    pm2 startup
    ```
 
-## Quick Commands
-
-After installation, the following aliases are available:
-
-- `noxhime-start`: Start the bot manually
-- `noxhime-monitor`: Launch the monitoring CLI
-- `noxhime-logs`: View the bot logs
-- `noxhime-status`: Check the bot's status
-- `noxhime-restart`: Restart the bot
-- `noxhime-config`: Edit the configuration file
-
 ## IP/Port Whitelisting
 
 Noxhime Bot includes an advanced IP/Port whitelisting system for enhanced security. This prevents unauthorized access to the bot's API endpoints by restricting access to specific IP addresses and ports.
@@ -128,11 +132,10 @@ For detailed documentation on the whitelist feature, see [docs/whitelist.md](doc
 
 ## Commands
 
-Noxhime Bot provides a comprehensive set of commands for Discord interaction and server management. Regular commands are available to everyone, while sensitive operations require BioLock v2 authentication.
+Noxhime Bot provides a comprehensive set of commands for Discord interaction and server management. All commands are now available to everyone.
 
 See the complete [Command Reference](docs/commands.md) for a detailed list of:
-- Discord commands available to all users
-- BioLock-protected commands requiring authentication
+- Discord commands
 - Whitelist management commands (requires Discord admin permissions)
 - Server-side management commands
 - API endpoints (can be restricted via IP/Port whitelisting)
@@ -140,71 +143,35 @@ See the complete [Command Reference](docs/commands.md) for a detailed list of:
 Here are some of the most commonly used commands:
 
 - `!status` - Check if the bot is online
-- `!ask <question>` - Ask the bot a question using AI
 - `!system` - Display system status and statistics
 - `!whitelist status` - Show current whitelist configuration (admin only)
 
 ### Available Commands
 
-#### Regular Commands (No Authentication Required)
+#### Discord Commands
 - `!status` - Check if bot is online
 - `!whoami` - Shows welcome message for all users
 - `!cmds` - Lists available commands
-- `!ask <question>` - Ask the AI a question
 - `!system` - Display system status and statistics
 - `!uptime` - Shows system and bot uptime
 - `!services` - Checks status of system services
 - `!mood` - Shows bot's current emotional state
 - `!logs <type> <count>` - View recent system logs
 - `!incidents` - Views security incidents
-
-#### BioLock Protected Commands (Require Authentication)
-- `!unlock` - Authenticate with BioLock
-- `!lock` - Lock your BioLock session
-- `!override [passphrase]` - Emergency override for urgent access
 - `!restart` - Restart the bot
 - `!heal` - Trigger self-healing maintenance routine
 - `!backup` - Triggers manual backup
 - `!sentinel <start|stop>` - Controls sentinel monitoring
-- `!purge` - Purge messages or data
-
-#### Web Dashboard Commands
 - `!link` - Get a one-time token for web dashboard access
 
 ### Admin-Only Commands (Discord Server Administrators)
 - `!whitelist` commands - Manage IP/port whitelisting (requires Discord admin permissions)
 
-## Authentication and Security
-
-**Noxhime Bot uses BioLock v2 for user-level command protection!**
-
-### BioLock v2 Security System
-
-BioLock v2 is a user-level authentication system that protects sensitive commands from unauthorized use. Unlike global authentication systems, BioLock v2 is designed to provide individualized security for each user of the bot.
-
-#### Key Features
-- **User-Level Authentication**: Each user has their own BioLock profile
-- **Multiple Security States**: Supports locked, pending, unlocked, and emergency override states
-- **Discord-Based Authentication**: Authentication happens through secure Discord DMs
-- **Audit Logging**: Comprehensive logging of all authentication events
-- **Emergency Override**: Secure backup method for urgent access
-
-#### Protected Commands
-The following commands are protected by BioLock v2 and require authentication:
-- `!restart` - Restart the bot
-- `!heal` - Trigger self-healing routine
-- `!backup` - Trigger manual backup
-- `!sentinel <start|stop>` - Control the Sentinel monitoring system
-- `!whitelist <action>` - Manage server whitelist
-- `!purge` - Purge messages or data
-- `!self-destruct` - Initiate self-destruct sequence (if implemented)
-
-### Current Access Model
-- **Regular commands** are available to everyone
-- **Sensitive commands** require BioLock authentication
-- **Whitelist management** requires Discord Administrator permissions in the server
-- **Web dashboard access** is authenticated via one-time tokens and JWTs
-- **API endpoints** can be restricted per installation with IP/Port whitelisting
+### Security Model
+- All commands are available to everyone
+- Whitelist management requires Discord Administrator permissions in the server
+- Web dashboard access is authenticated via one-time tokens and JWTs
+- API endpoints can be restricted per installation with IP/Port whitelisting
 
 ## Server Monitoring System
 
@@ -232,7 +199,7 @@ The bot runs an Express server to receive alerts from:
 - Fail2Ban security events
 - Custom system events
 
-## Sentinel Intelligence System (Phase 4) - IMPLEMENTED ✅
+## Sentinel Intelligence System
 
 The Sentinel Intelligence system provides advanced security monitoring and system protection:
 
@@ -248,50 +215,49 @@ The Sentinel Intelligence system provides advanced security monitoring and syste
 - ✅ Sends alerts when services go down
 - ✅ Database integration for historical service status
 
-### Suspicious IP Detection
-- ✅ Tracks IP addresses showing suspicious behavior
-- ✅ Monitors for brute force attempts and other attacks
-- ✅ Integrates with system security tools
-- ✅ IP tracking with incident counting
+## Web Dashboard
 
-### Automated Backup System
-- ✅ Scheduled backups of database and logs
-- ✅ Remote storage via Rclone integration
-- ✅ Rotation system to manage storage space
-- ✅ Manual backup option for immediate safeguarding
-
-## Evolving Personality Core (Phase 5)
-
-The bot features a dynamic personality system that evolves based on interactions and events:
-
-### Mood System
-- Multiple mood states: happy, focused, concerned, alert, playful, sarcastic, serious
-- Mood intensity tracking
-- Automatic mood transitions based on system events
-
-### Emotional Responses
-- Context-aware message styling
-- Mood-appropriate emoji usage
-- Dynamic response formatting
-
-### Visual Styling
-- Mood-based embed colors
-- Themed message formatting
-- Personality-driven user interaction
-
-### Trigger Events
-- System errors trigger concern
-- Security threats heighten alertness
-- Successful operations improve mood
-- User interactions influence emotional state
-- Resource pressure affects focus and concern levels
-
-## Web Interface Dashboard (Phase 7)
-
-Noxhime includes a real-time, identity-aware web dashboard that provides:
+Noxhime Bot includes a web dashboard for easy monitoring and management:
 
 ### Features
-- **Real-time System Monitoring**: Live updates of CPU, memory, disk usage, and uptime
+- ✅ Real-time system status monitoring
+- ✅ Service status visualization
+- ✅ Activity log viewer with filtering
+- ✅ Command trigger interface
+- ✅ One-time token authentication
+- ✅ Mobile-responsive design with Tailwind CSS
+
+### Security
+- JWT authentication with short-lived tokens
+- Optional IP/Port whitelisting for enhanced security
+
+## Development and Contribution
+
+Noxhime Bot is open source and welcomes contributions:
+
+### Development Setup
+1. Fork the repository
+2. Clone your fork: `git clone https://github.com/yourusername/noxhime-bot.git`
+3. Install dependencies: `npm install`
+4. Create a `.env` file from `.env.example`
+5. Run in development mode: `npm start`
+
+### Pull Request Guidelines
+1. Create a feature branch for your changes
+2. Follow the existing code style
+3. Add appropriate tests for your changes
+4. Update documentation if necessary
+5. Submit a pull request with a clear description of your changes
+
+## License
+
+Noxhime Bot is licensed under the ISC License.
+
+## Support
+
+For support or to report issues, please use the GitHub issue tracker or join our Discord server.
+
+Happy monitoring!
 - **Bot Status**: Current status, mood, and uptime information
 - **Command Trigger Panel**: Execute administrative commands directly from the dashboard
 - **Activity Log**: View recent events and system logs in real-time

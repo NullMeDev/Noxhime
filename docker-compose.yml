@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  noxhime:
+    # Build the image using the Dockerfile in the current directory
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    # Container name for easier reference
+    container_name: noxhime-bot
+
+    # Restart policy for production use
+    restart: unless-stopped
+
+    # Load environment variables from .env file
+    env_file:
+      - .env
+
+    # You can also specify individual environment variables here
+    # which will override values from the .env file
+    environment:
+      # Basic configuration
+      - NODE_ENV=development
+      # You can override Discord credentials for testing
+      # - DISCORD_TOKEN=your_test_token_here
+      # - CLIENT_ID=your_test_client_id_here
+      # - NOTIFY_CHANNEL_ID=your_test_channel_id_here
+      
+      # Web dashboard and API settings
+      - API_ENABLED=true
+      - API_PORT=3000
+      - DASHBOARD_URL=http://localhost:3000
+      
+      # Monitoring settings
+      - MONIT_ENABLED=true
+      - MONIT_PORT=5000
+      - SELF_HEALING_ENABLED=true
+      
+      # For development and debugging
+      - DEBUG=noxhime:*
+
+    # Port mappings - map host ports to container ports
+    ports:
+      # Web dashboard
+      - "3000:3000"
+      # Monitoring server
+      - "5000:5000"
+      # Any additional ports for development
+      # - "9229:9229"  # For Node.js debugging
+
+    # Volume mappings for persistent data
+    volumes:
+      # Store bot data persistently
+      - noxhime-data:/app/data
+      # Mount logs directory for easier access to logs
+      - ./logs:/app/logs
+      # For development: mount source code to enable hot reloading
+      # - ./src:/app/src
+      # - ./web:/app/web
+
+    # Command override for development (uncomment to use)
+    # Using ts-node directly can be useful for development
+    # command: npx ts-node src/index.ts
+
+    # Enable Node.js debugging (uncomment to use)
+    # command: node --inspect=0.0.0.0:9229 dist/index.js
+
+# Named volumes for data persistence
+volumes:
+  noxhime-data:
+    # You can use external: true if you want to reuse an existing volume
+    # external: true
+
