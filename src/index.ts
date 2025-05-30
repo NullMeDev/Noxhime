@@ -381,17 +381,49 @@ client.on('messageCreate', async (message) => {
         }
         
         await message.channel.sendTyping();
-        let response = "AI response functionality has been removed.";
         
-        // Apply personality styling if enabled
-        if (PERSONALITY_ENABLED) {
-          const personality = getPersonalityCore();
-          await personality.processEvent(EventType.USER_INTERACTION, 5);
-          response = await personality.styleMessage(response);
+        if (PERSONALITY_ENABLED && process.env.AI_ENABLED === 'true') {
+          try {
+            const personality = getPersonalityCore();
+            await personality.processEvent(EventType.USER_INTERACTION, 5);
+            
+            // Get information about the server and channel for context
+            const guildName = message.guild?.name || 'Direct Message';
+            // Safely get channel name based on channel type
+            const channelName = message.channel.type === ChannelType.DM 
+              ? 'Direct Message'
+              : 'name' in message.channel 
+                ? message.channel.name || 'Unknown Channel'
+                : 'Unknown Channel';
+            const contextInfo = `This conversation is taking place in ${guildName}, in channel: ${channelName}.`;
+            
+            // Generate AI response using DeepSeek-V3
+            const response = await personality.generateAIResponse(
+              question,
+              message.author.id,
+              contextInfo
+            );
+            
+            await message.reply(response);
+            await logEvent('COMMAND', `User ${message.author.username} asked: "${question.substring(0, 50)}${question.length > 50 ? '...' : ''}"`);
+          } catch (error) {
+            console.error('Error processing AI response:', error);
+            await message.reply("I encountered an error while processing your question. Please try again later.");
+            await logEvent('ERROR', `AI error for user ${message.author.username}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
+        } else {
+          // Fallback if AI or personality is not enabled
+          let response = "AI capabilities are not currently enabled.";
+          
+          // Apply personality styling if available
+          if (PERSONALITY_ENABLED) {
+            const personality = getPersonalityCore();
+            response = await personality.styleMessage(response);
+          }
+          
+          await message.reply(response);
+          await logEvent('COMMAND', `User ${message.author.username} asked a question, but AI is disabled`);
         }
-        
-        await message.reply(response);
-        await logEvent('COMMAND', `User ${message.author.username} asked a question, but AI is disabled`);
         break;
         
       case 'restart':
@@ -844,17 +876,51 @@ client.on('messageCreate', async (message) => {
     
     if (questionText) {
       await message.channel.sendTyping();
-      let response = "Hi there! The AI response feature has been removed.";
       
-      // Apply personality styling if enabled
-      if (PERSONALITY_ENABLED) {
-        const personality = getPersonalityCore();
-        await personality.processEvent(EventType.USER_INTERACTION, 6);
-        response = await personality.styleMessage(response);
+      if (PERSONALITY_ENABLED && process.env.AI_ENABLED === 'true') {
+        try {
+          const personality = getPersonalityCore();
+          await personality.processEvent(EventType.USER_INTERACTION, 6);
+          
+          // Get information about the server and channel for context
+          const guildName = message.guild?.name || 'Direct Message';
+          // Safely get channel name based on channel type
+          const channelName = message.channel.type === ChannelType.DM 
+            ? 'Direct Message'
+            : 'name' in message.channel 
+              ? message.channel.name || 'Unknown Channel'
+              : 'Unknown Channel';
+          const contextInfo = `This conversation is taking place in ${guildName}, in channel: ${channelName}. 
+          The user has mentioned you directly in their message.`;
+          
+          // Generate AI response using DeepSeek-V3
+          const response = await personality.generateAIResponse(
+            questionText,
+            message.author.id,
+            contextInfo
+          );
+          
+          await message.reply(response);
+          await logEvent('MENTION', `User ${message.author.username} mentioned bot and said: ${questionText.substring(0, 50)}${questionText.length > 50 ? '...' : ''}`);
+        } catch (error) {
+          console.error('Error processing AI response for mention:', error);
+          await message.reply("I encountered an error while processing your message. Please try again later.");
+          await logEvent('ERROR', `AI error for mention by ${message.author.username}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      } else {
+        // Fallback if AI or personality is not enabled
+        let response = "Hi there! AI capabilities are not currently enabled.";
+        
+        // Apply personality styling if available
+        if (PERSONALITY_ENABLED) {
+          const personality = getPersonalityCore();
+          await personality.processEvent(EventType.USER_INTERACTION, 6);
+          response = await personality.styleMessage(response);
+        }
+        
+        await message.reply(response);
+        await logEvent('MENTION', `User ${message.author.username} mentioned bot and said: ${questionText}`);
       }
-      
-      await message.reply(response);
-      await logEvent('MENTION', `User ${message.author.username} mentioned bot and said: ${questionText}`);
     }
   }
 });

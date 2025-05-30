@@ -4,7 +4,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const discord_js_1 = require("discord.js");
-const openai_1 = __importDefault(require("openai"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const sqlite3_1 = __importDefault(require("sqlite3"));
 const path_1 = __importDefault(require("path"));
@@ -67,12 +66,10 @@ async function logEvent(type, description) {
     return await dbLogEvent(type, description);
 }
 const NOTIFY_CHANNEL_ID = process.env.NOTIFY_CHANNEL_ID || '';
-const BIOLOCK_ENABLED = false; // Disabled - bot is now open for all users
-const BIOLOCK_PASSPHRASE = process.env.BIOLOCK_PASSPHRASE;
-const BIOLOCK_OVERRIDE_KEY = process.env.BIOLOCK_OVERRIDE_KEY;
 const COMMAND_PREFIX = process.env.COMMAND_PREFIX || '!';
 const MONIT_ENABLED = process.env.MONIT_ENABLED === 'true';
 const MONIT_PORT = parseInt(process.env.MONIT_PORT || '5000');
+const API_PORT = parseInt(process.env.API_PORT || '3000');
 const PID_FILE_PATH = process.env.PID_FILE_PATH || '/home/nulladmin/noxhime-bot/noxhime.pid';
 const SELF_HEALING_ENABLED = process.env.SELF_HEALING_ENABLED === 'true';
 const SYSTEM_STATS_INTERVAL = parseInt(process.env.SYSTEM_STATS_INTERVAL || '3600000'); // Default: 1 hour
@@ -80,12 +77,15 @@ const SYSTEM_STATS_INTERVAL = parseInt(process.env.SYSTEM_STATS_INTERVAL || '360
 const SENTINEL_ENABLED = process.env.SENTINEL_ENABLED === 'true';
 const SENTINEL_CHECK_INTERVAL = parseInt(process.env.SENTINEL_CHECK_INTERVAL || '60000'); // Default: 1 minute
 const RCLONE_BACKUP_ENABLED = process.env.RCLONE_BACKUP_ENABLED === 'true';
+const API_ENABLED = process.env.API_ENABLED === 'true';
+const API_KEYS = process.env.API_KEYS?.split(',') || [];
 const RCLONE_REMOTE = process.env.RCLONE_REMOTE || 'gdrive:NoxhimeBackups';
 const RCLONE_SCHEDULE = process.env.RCLONE_SCHEDULE || '0 0 * * *'; // Default: Daily at midnight
 // Phase 5: Personality Core Configuration
 const PERSONALITY_ENABLED = process.env.PERSONALITY_ENABLED === 'true';
 const DEFAULT_MOOD = process.env.DEFAULT_MOOD || 'focused';
-let bioLocked = false; // BioLock disabled - bot is now open for all users
+// Phase 7: Web Dashboard Configuration
+const DASHBOARD_URL = process.env.DASHBOARD_URL || `http://localhost:${API_PORT}`;
 const client = new discord_js_1.Client({
     intents: [
         discord_js_1.GatewayIntentBits.Guilds,
@@ -93,26 +93,6 @@ const client = new discord_js_1.Client({
         discord_js_1.GatewayIntentBits.MessageContent,
     ],
 });
-const openai = new openai_1.default({
-    apiKey: process.env.OPENAI_API_KEY,
-});
-// Function to use OpenAI for chat responses
-async function generateAIResponse(prompt) {
-    try {
-        const completion = await openai.chat.completions.create({
-            messages: [
-                { role: "system", content: "You are Noxhime, a helpful Discord bot with a friendly but slightly mischievous personality. You help users with information and assistance." },
-                { role: "user", content: prompt }
-            ],
-            model: "gpt-3.5-turbo",
-        });
-        return completion.choices[0].message.content || "I don't have a response for that.";
-    }
-    catch (error) {
-        console.error('Error generating AI response:', error);
-        return "I'm having trouble thinking right now. Please try again later.";
-    }
-}
 client.once('ready', async () => {
     console.log(`Logged in as ${client.user?.tag}!`);
     // Initialize the database
@@ -281,8 +261,7 @@ client.on('messageCreate', async (message) => {
     const content = message.content;
     const lowerContent = content.toLowerCase();
     const isTextChannel = message.channel.type === discord_js_1.ChannelType.GuildText;
-    // BioLock System - DISABLED (bot is now open for all users)
-    // All commands are now available to everyone
+    // BioLock v2 System - User-level protection for sensitive commands
     // Command handling
     if (content.startsWith(COMMAND_PREFIX) && isTextChannel) {
         const args = content.slice(COMMAND_PREFIX.length).trim().split(/ +/);
@@ -309,6 +288,7 @@ client.on('messageCreate', async (message) => {
                     `\`${COMMAND_PREFIX}system\` – display system status and stats`,
                     `\`${COMMAND_PREFIX}services\` – check status of system services`,
                     `\`${COMMAND_PREFIX}mood\` – see my current emotional state`,
+                    `\`${COMMAND_PREFIX}link\` – get access to web dashboard`,
                     `\`${COMMAND_PREFIX}restart\` – restart the bot`,
                     `\`${COMMAND_PREFIX}heal\` – trigger self-healing routine`,
                     `\`${COMMAND_PREFIX}logs <type> <count>\` – view recent logs`,
@@ -317,6 +297,8 @@ client.on('messageCreate', async (message) => {
                     `\`${COMMAND_PREFIX}incidents\` – view security incidents`,
                     `\`${COMMAND_PREFIX}whitelist <action>\` – manage server whitelisting`
                 ];
+                // Add dashboard command
+                commands.push(`\`${COMMAND_PREFIX}link\` – get web dashboard access token`);
                 // Use personality system if enabled
                 if (PERSONALITY_ENABLED) {
                     const personality = (0, personality_1.getPersonalityCore)();
@@ -337,7 +319,7 @@ client.on('messageCreate', async (message) => {
                     return;
                 }
                 await message.channel.sendTyping();
-                let response = await generateAIResponse(question);
+                let response = "AI response functionality has been removed.";
                 // Apply personality styling if enabled
                 if (PERSONALITY_ENABLED) {
                     const personality = (0, personality_1.getPersonalityCore)();
@@ -345,7 +327,7 @@ client.on('messageCreate', async (message) => {
                     response = await personality.styleMessage(response);
                 }
                 await message.reply(response);
-                await logEvent('AI_QUERY', `User ${message.author.username} asked: ${question}`);
+                await logEvent('COMMAND', `User ${message.author.username} asked a question, but AI is disabled`);
                 break;
             case 'restart':
                 const auditChannel = NOTIFY_CHANNEL_ID
@@ -358,9 +340,55 @@ client.on('messageCreate', async (message) => {
                 await logEvent('ADMIN', `User ${message.author.username} initiated restart`);
                 process.exit(0);
                 break;
-            case 'lock':
-                // Lock functionality removed - bot is now open for all users
-                await message.reply("Lock functionality has been removed. This bot is now freely available to all users!");
+            // Biolock commands have been removed
+            case 'link':
+                try {
+                    // Check if API server is enabled
+                    if (!API_ENABLED) {
+                        await message.reply("Web dashboard is not enabled on this server.");
+                        return;
+                    }
+                    // Authentication no longer required with Biolock removed
+                    // Reply in the channel
+                    await message.reply("I'm sending you a link token via DM. Please check your private messages.");
+                    try {
+                        // Generate a one-time token via API
+                        const apiUrl = `http://localhost:${API_PORT}/api/auth/create-link`;
+                        const apiKey = API_KEYS[0]; // Use the first API key
+                        const axios = require('axios');
+                        const response = await axios.post(apiUrl, {
+                            discordId: message.author.id,
+                            apiKey: apiKey
+                        });
+                        if (response.data && response.data.token) {
+                            // Create DM channel
+                            const dmChannel = await message.author.createDM();
+                            // Create embed for token
+                            const embed = new discord_js_1.EmbedBuilder()
+                                .setTitle('🔗 Web Dashboard Access')
+                                .setDescription('Here is your one-time access token for the web dashboard. This token will expire in 30 minutes.')
+                                .setColor(0x3498DB)
+                                .addFields({ name: 'Token', value: `\`${response.data.token}\`` }, { name: 'Instructions', value: 'Go to the dashboard, paste this token, and click Authenticate.' })
+                                .setTimestamp()
+                                .setFooter({ text: 'Noxhime Web Dashboard' });
+                            // Send token via DM
+                            await dmChannel.send({ embeds: [embed] });
+                            // Log the link generation
+                            await logEvent('WEB_ACCESS', `User ${message.author.username} requested dashboard access token`);
+                        }
+                        else {
+                            throw new Error('Invalid API response');
+                        }
+                    }
+                    catch (dmError) {
+                        console.error('Error sending DM with token:', dmError);
+                        await message.reply('Could not send token via DM. Please ensure your DMs are open and try again.');
+                    }
+                }
+                catch (error) {
+                    console.error('Error generating link token:', error);
+                    await message.reply('An error occurred while generating your access token. Please try again later.');
+                }
                 break;
             case 'system':
                 try {
@@ -662,13 +690,13 @@ client.on('messageCreate', async (message) => {
                 break;
         }
     }
-    // AI Chat - respond when mentioned
+    // Respond when mentioned
     if (message.mentions.has(client.user.id) && isTextChannel) {
         // Extract the actual question by removing the mention
         const questionText = content.replace(new RegExp(`<@!?${client.user.id}>`), '').trim();
         if (questionText) {
             await message.channel.sendTyping();
-            let response = await generateAIResponse(questionText);
+            let response = "Hi there! The AI response feature has been removed.";
             // Apply personality styling if enabled
             if (PERSONALITY_ENABLED) {
                 const personality = (0, personality_1.getPersonalityCore)();
@@ -676,7 +704,7 @@ client.on('messageCreate', async (message) => {
                 response = await personality.styleMessage(response);
             }
             await message.reply(response);
-            await logEvent('AI_MENTION', `User ${message.author.username} mentioned bot and said: ${questionText}`);
+            await logEvent('MENTION', `User ${message.author.username} mentioned bot and said: ${questionText}`);
         }
     }
 });

@@ -1,0 +1,10 @@
+{
+  "ipWhitelist": {
+    "enabled": false,
+    "addresses": []
+  },
+  "portWhitelist": {
+    "enabled": false,
+    "ports": []
+  }
+}
