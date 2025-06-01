@@ -23,3 +23,17 @@ pids
 # OS specific files
 .DS_Store
 Thumbs.db
+
+# Build output
+public/*.ts
+public/*.ts.new
+
+# Development files
+....
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
