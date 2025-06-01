@@ -4,7 +4,8 @@ module.exports = {
     "./src/**/*.{html,js,ts,jsx,tsx}",
     "./public/**/*.{html,js,ts,jsx,tsx}",
     "./functions/**/*.{js,ts,jsx,tsx}",
-    "./web/public/**/*.{html,js}"
+    "./web/public/**/*.{html,js}",
+    "./src/styles/**/*.css"
   ],
   theme: {
     extend: {
@@ -63,15 +64,6 @@ module.exports = {
     },
   },
   plugins: [],
-  // Remove unused CSS in production
-  purge: {
-    enabled: process.env.NODE_ENV === 'production',
-    content: [
-      './src/**/*.{html,js}',
-      './public/**/*.{html,js}',
-      './web/public/**/*.{html,js}',
-    ],
-  },
   // Enable dark mode (class-based)
   darkMode: 'class',
 };
