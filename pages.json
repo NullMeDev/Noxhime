@@ -1,6 +1,6 @@
 {
   "build": {
-    "command": "cp -r src/* public/",
+    "command": "npm run build:prod",
     "output_directory": "public",
     "environment": {
       "NODE_VERSION": "18.x"
@@ -20,6 +20,9 @@
       "script": "site-handler"
     }
   ],
+  "custom_domains": [
+    "status.nullme.lol"
+  ],
   "assets": {
     "browser_TTL": {
       "static/*": 86400,
@@ -30,26 +33,42 @@
   },
   "env": {
     "production": {
-      "API_ENDPOINT": "https://api.noxhime.com/status",
-      "AUTH_DOMAIN": "auth.noxhime.com",
-      "ENVIRONMENT": "production"
+      "API_ENDPOINT": "https://status.nullme.lol/api/status",
+      "AUTH_DOMAIN": "auth.nullme.lol",
+      "ENVIRONMENT": "production",
+      "USE_MOCK_DATA": "true"
     },
     "staging": {
-      "API_ENDPOINT": "https://api-staging.noxhime.com/status",
-      "AUTH_DOMAIN": "auth-staging.noxhime.com",
-      "ENVIRONMENT": "staging"
+      "API_ENDPOINT": "https://status-staging.nullme.lol/api/status",
+      "AUTH_DOMAIN": "auth-staging.nullme.lol",
+      "ENVIRONMENT": "staging",
+      "USE_MOCK_DATA": "true"
     },
     "development": {
       "API_ENDPOINT": "http://localhost:3000/status",
       "AUTH_DOMAIN": "localhost:3000",
-      "ENVIRONMENT": "development"
+      "ENVIRONMENT": "development",
+      "USE_MOCK_DATA": "true",
+      "SKIP_AUTH": "true",
+      "DEBUG": "true"
     }
   },
   "headers": {
     "/*": {
       "X-Frame-Options": "DENY",
       "X-Content-Type-Options": "nosniff",
-      "Referrer-Policy": "strict-origin-when-cross-origin"
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload"
+    },
+    "/api/*": {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Max-Age": "86400",
+      "Cache-Control": "max-age=60"
     }
   },
   "compatibility_flags": [
