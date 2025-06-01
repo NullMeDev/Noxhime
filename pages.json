@@ -1,0 +1,60 @@
+{
+  "build": {
+    "command": "cp -r src/* public/",
+    "output_directory": "public",
+    "environment": {
+      "NODE_VERSION": "18.x"
+    },
+    "root_dir": "."
+  },
+  "routes": [
+    {
+      "pattern": "/api/*",
+      "zone_id": "{ZONE_ID}",
+      "custom_domain": true,
+      "script": "api-handler"
+    },
+    {
+      "pattern": "/*",
+      "serve": "/index.html",
+      "script": "site-handler"
+    }
+  ],
+  "assets": {
+    "browser_TTL": {
+      "static/*": 86400,
+      "*.html": 3600,
+      "*.css": 86400,
+      "*.js": 86400
+    }
+  },
+  "env": {
+    "production": {
+      "API_ENDPOINT": "https://api.noxhime.com/status",
+      "AUTH_DOMAIN": "auth.noxhime.com",
+      "ENVIRONMENT": "production"
+    },
+    "staging": {
+      "API_ENDPOINT": "https://api-staging.noxhime.com/status",
+      "AUTH_DOMAIN": "auth-staging.noxhime.com",
+      "ENVIRONMENT": "staging"
+    },
+    "development": {
+      "API_ENDPOINT": "http://localhost:3000/status",
+      "AUTH_DOMAIN": "localhost:3000",
+      "ENVIRONMENT": "development"
+    }
+  },
+  "headers": {
+    "/*": {
+      "X-Frame-Options": "DENY",
+      "X-Content-Type-Options": "nosniff",
+      "Referrer-Policy": "strict-origin-when-cross-origin"
+    }
+  },
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "compatibility_date": "2025-06-01"
+}
+
