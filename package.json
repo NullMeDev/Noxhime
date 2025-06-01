@@ -7,11 +7,15 @@
     "node": ">=18.0.0 <21.0.0"
   },
   "scripts": {
-    "dev": "wrangler pages dev --local --compatibility-date=2025-06-01",
+    "dev": "wrangler pages dev public --compatibility-date=2025-06-01 --binding ENVIRONMENT=development --binding DEBUG=true --binding SKIP_AUTH=true --binding USE_MOCK_DATA=true",
+    "dev:prod": "wrangler pages dev public --compatibility-date=2025-06-01 --binding ENVIRONMENT=production",
+    "dev:tailwind": "npx tailwindcss -i ./src/styles/input.css -o ./public/styles.css --watch",
+    "dev:full": "npm run build && concurrently \"npm run dev\" \"npm run dev:tailwind\"",
     "build": "npx tailwindcss -i ./src/styles/input.css -o ./public/styles.css && cp -r src/* public/",
-    "deploy": "npm run build && wrangler pages publish public",
-    "start": "wrangler pages dev public --compatibility-date=2025-06-01",
-    "tailwind:watch": "npx tailwindcss -i ./src/styles/input.css -o ./public/styles.css --watch",
+    "build:prod": "NODE_ENV=production npx tailwindcss -i ./src/styles/input.css -o ./public/styles.css --minify && cp -r src/* public/",
+    "deploy": "npm run build:prod && wrangler pages publish public",
+    "deploy:staging": "npm run build:prod && wrangler pages publish public --branch staging",
+    "start": "npm run dev",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -25,7 +29,7 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240525.0",
     "@types/node": "^18.18.0",
-    "concurrently": "^8.2.2", 
+    "concurrently": "^8.2.2",
     "tailwindcss": "^3.3.2",
     "typescript": "^5.3.3",
     "wrangler": "^4.18.0"
