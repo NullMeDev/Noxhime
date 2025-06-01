@@ -1,0 +1,161 @@
+/* Tailwind CSS directives */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base CSS variables */
+@layer base {
+  :root {
+    /* Primary colors */
+    --primary-50: #f0f9ff;
+    --primary-100: #e0f2fe;
+    --primary-200: #bae6fd;
+    --primary-300: #7dd3fc;
+    --primary-400: #38bdf8;
+    --primary-500: #0ea5e9;
+    --primary-600: #0284c7;
+    --primary-700: #0369a1;
+    --primary-800: #075985;
+    --primary-900: #0c4a6e;
+    
+    /* Secondary colors */
+    --secondary-50: #f5f3ff;
+    --secondary-100: #ede9fe;
+    --secondary-200: #ddd6fe;
+    --secondary-300: #c4b5fd;
+    --secondary-400: #a78bfa;
+    --secondary-500: #8b5cf6;
+    --secondary-600: #7c3aed;
+    --secondary-700: #6d28d9;
+    --secondary-800: #5b21b6;
+    --secondary-900: #4c1d95;
+    
+    /* Dark theme colors */
+    --dark-100: #1e293b;
+    --dark-200: #1a2234;
+    --dark-300: #111827;
+  }
+  
+  /* Dark mode overrides */
+  .dark {
+    --primary-50: #0c4a6e;
+    --primary-100: #075985;
+    --primary-200: #0369a1;
+    --primary-300: #0284c7;
+    --primary-400: #0ea5e9;
+    --primary-500: #38bdf8;
+    --primary-600: #7dd3fc;
+    --primary-700: #bae6fd;
+    --primary-800: #e0f2fe;
+    --primary-900: #f0f9ff;
+    
+    --secondary-50: #4c1d95;
+    --secondary-100: #5b21b6;
+    --secondary-200: #6d28d9;
+    --secondary-300: #7c3aed;
+    --secondary-400: #8b5cf6;
+    --secondary-500: #a78bfa;
+    --secondary-600: #c4b5fd;
+    --secondary-700: #ddd6fe;
+    --secondary-800: #ede9fe;
+    --secondary-900: #f5f3ff;
+    
+    background-color: var(--dark-300);
+    color: #f3f4f6;
+  }
+}
+
+/* Custom component classes */
+@layer components {
+  .auth-screen {
+    @apply fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50;
+  }
+  
+  .auth-card {
+    @apply bg-white dark:bg-dark-200 rounded-lg p-8 w-full max-w-md shadow-xl;
+  }
+  
+  .dashboard-card {
+    @apply bg-white dark:bg-dark-200 rounded-lg p-5 shadow-card transition-all duration-200 hover:shadow-card-hover;
+  }
+  
+  .btn {
+    @apply px-4 py-2 rounded-md font-medium flex items-center justify-center transition-all duration-150 cursor-pointer;
+  }
+  
+  .btn-sm {
+    @apply px-2 py-1 text-sm rounded;
+  }
+  
+  .btn-primary {
+    @apply bg-primary-600 text-white hover:bg-primary-700 dark:bg-primary-700 dark:hover:bg-primary-600;
+  }
+  
+  .btn-secondary {
+    @apply bg-secondary-600 text-white hover:bg-secondary-700 dark:bg-secondary-700 dark:hover:bg-secondary-600;
+  }
+  
+  .status-badge {
+    @apply text-xs px-2 py-1 rounded-full;
+  }
+  
+  .status-good {
+    @apply bg-green-500 text-white;
+  }
+  
+  .status-warning {
+    @apply bg-yellow-500 text-white;
+  }
+  
+  .status-error {
+    @apply bg-red-500 text-white;
+  }
+  
+  .spinner {
+    @apply w-8 h-8 rounded-full border-4 border-gray-200 dark:border-gray-700 border-t-primary-500 animate-spin;
+  }
+  
+  /* Event styles */
+  .event-card {
+    @apply p-3 bg-gray-800 dark:bg-gray-900 rounded-md;
+  }
+  
+  /* Incident styles */
+  .incident-card {
+    @apply p-4 border-l-4 bg-opacity-10 transition-colors duration-300;
+  }
+  
+  .incident-card.resolved {
+    @apply border-green-500 bg-green-500 dark:border-green-600 dark:bg-green-900;
+  }
+  
+  .incident-card.active {
+    @apply border-red-500 bg-red-500 dark:border-red-600 dark:bg-red-900;
+  }
+}
+
+/* Custom animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@layer utilities {
+  .fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  
+  .slide-up {
+    animation: slideUp 0.4s ease-out;
+  }
+  
+  .animate-once {
+    animation-iteration-count: 1;
+  }
+}
+
