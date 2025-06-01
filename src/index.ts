@@ -14,6 +14,7 @@ import {
 import { getSentinel } from './sentinel';
 import { getPersonalityCore, EventType } from './personality';
 import { handleWhitelistCommands } from './whitelist-commands';
+import { isAllowedChannel } from './channel-check';
 import { getFail2BanMonitor } from './fail2ban';
 import { getHealthCheckMonitor } from './health-check';
 import { getDisasterRecovery } from "./modules/monitoring/disaster-recovery";
@@ -351,6 +352,16 @@ client.on('messageCreate', async (message) => {
   const content = message.content;
   const lowerContent = content.toLowerCase();
   const isTextChannel = message.channel.type === ChannelType.GuildText;
+  // Check if message is in allowed channel (skip check for DMs)
+  if (isTextChannel && !isAllowedChannel(message.channel)) {
+    console.log(`Message received in unauthorized channel: ${message.channel.id}`);
+    return;
+  }
+  // Check if message is in allowed channel (skip check for DMs)
+  if (isTextChannel && !isAllowedChannel(message.channel)) {
+    console.log(`Message received in unauthorized channel: ${message.channel.id}`);
+    return;
+  }
 
   // BioLock v2 System - User-level protection for sensitive commands
 
