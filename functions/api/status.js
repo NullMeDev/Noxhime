@@ -124,13 +124,14 @@ function getAuthToken(request) {
  */
 async function validateToken(token, env) {
   // Skip validation in development mode
-  if (env.ENVIRONMENT === 'development' || env.DEBUG === 'true') {
-    console.log('[DEV] Skipping token validation in development mode');
+  if (env.ENVIRONMENT === 'development' || env.DEBUG === 'true' || env.SKIP_AUTH === 'true') {
+    console.log('[API:DEV] Skipping token validation in development mode');
     return true;
   }
   
   // Allow test token for testing
   if (token === 'test-token') {
+    console.log('[API] Using test token for validation');
     return true;
   }
   
@@ -187,13 +188,16 @@ export async function onRequest(context) {
     // Get client IP for rate limiting
     const clientIp = request.headers.get('CF-Connecting-IP') || 'unknown';
     
+    // Check if we're in development mode
+    const isDev = env.ENVIRONMENT === 'development' || env.DEBUG === 'true' || env.SKIP_AUTH === 'true';
+    
     // Log request in development mode
-    if (env.ENVIRONMENT === 'development' || env.DEBUG === 'true') {
-      console.log(`[DEV] Status API request from ${clientIp}`);
+    if (isDev) {
+      console.log(`[API:DEV] Status API request from ${clientIp}`);
     }
     
     // Skip rate limiting in development mode
-    if (env.ENVIRONMENT !== 'development' && !checkRateLimit(clientIp, env.RATE_LIMIT || 60)) {
+    if (!isDev && !checkRateLimit(clientIp, env.RATE_LIMIT || 60)) {
       return new Response(JSON.stringify({ error: 'Rate limit exceeded' }), {
         status: 429,
         headers: {
@@ -209,30 +213,17 @@ export async function onRequest(context) {
       cleanupRateLimits();
     }
     
-    // Get authentication token
-    const token = getAuthToken(request);
-    
-    // Development mode always skips auth
-    if (env.ENVIRONMENT === 'development' || env.DEBUG === 'true') {
-      console.log('[DEV] Skipping authentication check in development mode');
-    } else {
-      // Validate token in production
-      if (!(await validateToken(token, env))) {
-        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-          status: 401,
-          headers: {
-            'Content-Type': 'application/json',
-            ...corsHeaders
-          }
-        });
-      }
+    // Authentication is handled by the middleware
+    // We don't need to duplicate the auth check here
+    if (isDev) {
+      console.log('[API:DEV] Middleware should have already skipped auth check');
     }
     
     // Prepare the response data
     let responseData;
     
     // Use mock data in development or when configured
-    if (env.ENVIRONMENT === 'development' || env.USE_MOCK_DATA === 'true') {
+    if (isDev || env.USE_MOCK_DATA === 'true') {
       responseData = structuredClone(MOCK_DATA);
       
       // Add some randomization

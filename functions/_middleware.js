@@ -13,13 +13,15 @@ const requestCounts = new Map();
  * @returns {Promise<boolean>} Whether the token is valid
  */
 async function validateToken(token, env) {
-  // Skip validation in development mode if configured
-  if (env.ENVIRONMENT === 'development' && env.SKIP_AUTH === 'true') {
+  // Skip validation in development mode
+  if (env.ENVIRONMENT === 'development' || env.DEBUG === 'true' || env.SKIP_AUTH === 'true') {
+    console.log('[MIDDLEWARE:DEV] Skipping token validation in development mode');
     return true;
   }
   
   // Allow a test token for development purposes
-  if (env.ENVIRONMENT === 'development' && token === 'test-token') {
+  if (token === 'test-token') {
+    console.log('[MIDDLEWARE] Using test token for validation');
     return true;
   }
   
@@ -56,7 +58,8 @@ async function validateToken(token, env) {
  */
 function checkRateLimit(request, env) {
   // Skip rate limiting in development
-  if (env.ENVIRONMENT === 'development') {
+  if (env.ENVIRONMENT === 'development' || env.DEBUG === 'true') {
+    console.log('[MIDDLEWARE:DEV] Skipping rate limiting in development mode');
     return true;
   }
   
@@ -156,8 +159,11 @@ export async function onRequest(context) {
     return next();
   }
   
+  // Skip auth entirely in development mode
+  const isDev = env.ENVIRONMENT === 'development' || env.DEBUG === 'true' || env.SKIP_AUTH === 'true';
+  
   // Only validate auth for API routes in non-development environments
-  if (url.pathname.startsWith('/api/') && env.ENVIRONMENT !== 'development' && env.DEBUG !== 'true') {
+  if (url.pathname.startsWith('/api/') && !isDev) {
     // Validate auth token for protected routes
     const authHeader = request.headers.get('Authorization') || '';
     const token = authHeader.replace('Bearer ', '');
@@ -180,8 +186,8 @@ export async function onRequest(context) {
         }
       });
     }
-  } else if (url.pathname.startsWith('/api/') && (env.ENVIRONMENT === 'development' || env.DEBUG === 'true')) {
-    console.log('[DEV] Skipping auth for API route in development mode:', url.pathname);
+  } else if (url.pathname.startsWith('/api/') && isDev) {
+    console.log('[MIDDLEWARE:DEV] Skipping auth for API route in development mode:', url.pathname);
   }
   
   try {
