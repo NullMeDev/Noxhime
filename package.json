@@ -1,52 +1,43 @@
 {
-  "name": "noxhime-bot",
-  "version": "4.0.0",
+  "name": "noxhime-status-dashboard",
+  "version": "1.0.0",
+  "description": "Status dashboard for Noxhime services",
+  "main": "public/index.js",
   "engines": {
     "node": "18.x"
   },
-  "main": "dist/index.js",
   "scripts": {
-    "start": "ts-node src/index.ts",
-    "build": "tsc && npm run build:web",
-    "monitor": "node dist/monitor-cli.js",
-    "build:web": "npx tailwindcss -i ./web/src/styles.css -o ./web/public/styles.css",
-    "test-alert": "curl -X POST http://localhost:5000/alert -H 'Content-Type: application/json' -d '{\"title\": \"Test Alert\", \"body\": \"This is a test alert from the command line\", \"severity\": \"info\"}'",
-    "migrate": "node dist/db/migrate.js",
-    "test": "node test-smoke.js"
+    "dev": "wrangler pages dev --local --compatibility-date=2025-06-01",
+    "build": "npx tailwindcss -i ./src/styles/input.css -o ./public/styles.css && cp -r src/* public/",
+    "deploy": "npm run build && wrangler pages publish public",
+    "start": "wrangler pages dev public --compatibility-date=2025-06-01",
+    "tailwind:watch": "npx tailwindcss -i ./src/styles/input.css -o ./public/styles.css --watch",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "keywords": [
+    "status",
+    "dashboard",
+    "cloudflare",
+    "pages"
+  ],
+  "author": "NullMeDev",
+  "license": "MIT",
   "devDependencies": {
-    "@types/express": "^5.0.2",
+    "@cloudflare/workers-types": "^4.20240525.0",
     "@types/node": "^18.18.0",
+    "concurrently": "^8.2.2", 
     "tailwindcss": "^3.3.2",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "wrangler": "^4.18.0"
   },
   "dependencies": {
-    "@types/bcrypt": "^5.0.2",
-    "@types/cors": "^2.8.17",
-    "@types/jsonwebtoken": "^9.0.2",
-    "@types/socket.io": "^3.0.2",
-    "axios": "^1.7.7",
-    "bcrypt": "^5.1.1",
-    "cors": "^2.8.5",
-    "discord.js": "^14.19.3",
     "dotenv": "^16.3.1",
-    "express": "^5.1.0",
     "jsonwebtoken": "^9.0.1",
-    "node-cron": "^3.0.3",
-    "socket.io": "^4.7.1",
-    "sqlite3": "^5.1.6"
+    "socket.io": "^4.7.1"
   },
-  "description": "Autonomous Discord bot with system monitoring capabilities.",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/NullMeDev/noxhime-bot.git"
+    "url": "git+https://github.com/NullMeDev/noxhime-status.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/NullMeDev/noxhime-bot/issues"
-  },
-  "homepage": "https://github.com/NullMeDev/noxhime-bot#readme"
+  "homepage": "https://status.noxhime.com"
 }
