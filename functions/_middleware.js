@@ -1,65 +1,4 @@
 /**
- * Global middleware for Cloudflare Pages Functions
- * Handles authentication, logging, and error handling
- */
-
-/**
- * Log request details
- * @param {Request} request - The incoming request
- * @param {Object} env - Environment variables
- */
-function logRequest(request, env) {
-  // Skip detailed logging in production
-  if (env.ENVIRONMENT === 'production' && env.DEBUG !== 'true') {
-    return;
-  }
-  
-  const url = new URL(request.url);
-  const clientIp = request.headers.get('CF-Connecting-IP') || 'unknown';
-  const userAgent = request.headers.get('User-Agent') || 'unknown';
-  
-  console.log(`[${new Date().toISOString()}] ${request.method} ${url.pathname} - IP: ${clientIp}, UA: ${userAgent}`);
-}
-
-/**
- * Main middleware handler
- */
-export async function onRequest(context) {
-  const { request, env, next } = context;
-  
-  // Log the incoming request
-  logRequest(request, env);
-  
-  // Skip other middleware steps for asset requests
-  const url = new URL(request.url);
-  if (url.pathname.startsWith('/assets/') || 
-      url.pathname.endsWith('.css') || 
-      url.pathname.endsWith('.js') || 
-      url.pathname.endsWith('.ico')) {
-    return next();
-  }
-  
-  // Continue to the next handler
-  try {
-    return await next();
-  } catch (error) {
-    // Global error handler
-    console.error('Unhandled error in request:', error);
-    
-    return new Response(JSON.stringify({ 
-      error: 'Internal server error',
-      message: env.ENVIRONMENT === 'development' ? error.message : 'An unexpected error occurred'
-    }), {
-      status: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      }
-    });
-  }
-}
-
-/**
  * Middleware for Cloudflare Pages Functions
  * Handles authentication, logging, error handling, and rate limiting
  */
@@ -181,6 +120,15 @@ export async function onRequest(context) {
   // Log the incoming request
   logRequest(request, env);
   
+  // Skip other middleware steps for asset requests
+  const url = new URL(request.url);
+  if (url.pathname.startsWith('/assets/') || 
+      url.pathname.endsWith('.css') || 
+      url.pathname.endsWith('.js') || 
+      url.pathname.endsWith('.ico')) {
+    return next();
+  }
+  
   // Check rate limiting
   if (!checkRateLimit(request, env)) {
     return new Response(JSON.stringify({ error: 'Rate limit exceeded' }), {
@@ -199,36 +147,41 @@ export async function onRequest(context) {
   }
   
   // Skip auth for public routes
-  const url = new URL(request.url);
   if (url.pathname === '/' || 
       url.pathname.startsWith('/assets/') || 
       url.pathname.startsWith('/public/') ||
       url.pathname === '/styles.css' ||
-      url.pathname === '/dashboard.js') {
+      url.pathname === '/dashboard.js' ||
+      url.pathname === '/favicon.ico') {
     return next();
   }
   
-  // Validate auth token for protected routes
-  const authHeader = request.headers.get('Authorization') || '';
-  const token = authHeader.replace('Bearer ', '');
-  
-  // If no token provided via header, check for token in query string
-  // (useful for development and testing)
-  let queryToken = '';
-  if (!token && url.searchParams.has('token')) {
-    queryToken = url.searchParams.get('token');
-  }
-  
-  const isValidToken = await validateToken(token || queryToken, env);
-  
-  if (!isValidToken) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      }
-    });
+  // Only validate auth for API routes in non-development environments
+  if (url.pathname.startsWith('/api/') && env.ENVIRONMENT !== 'development' && env.DEBUG !== 'true') {
+    // Validate auth token for protected routes
+    const authHeader = request.headers.get('Authorization') || '';
+    const token = authHeader.replace('Bearer ', '');
+    
+    // If no token provided via header, check for token in query string
+    // (useful for development and testing)
+    let queryToken = '';
+    if (!token && url.searchParams.has('token')) {
+      queryToken = url.searchParams.get('token');
+    }
+    
+    const isValidToken = await validateToken(token || queryToken, env);
+    
+    if (!isValidToken) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
+  } else if (url.pathname.startsWith('/api/') && (env.ENVIRONMENT === 'development' || env.DEBUG === 'true')) {
+    console.log('[DEV] Skipping auth for API route in development mode:', url.pathname);
   }
   
   try {
