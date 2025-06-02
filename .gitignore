@@ -1,14 +1,20 @@
-# Dependency directories
-node_modules/
-
-# Environment variables
+# Environment variables and secrets
 .env
+.env.*
+!.env.example
+*.pem
+*.key
+*secret*
+*credential*
+config.json
 
 # Database files
+*.sqlite
+*.sqlite3
 *.db
 
 # Logs
-logs/
+logs
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -20,6 +26,36 @@ pids
 *.seed
 *.pid.lock
 
-# OS specific files
+# Dependency directories
+node_modules/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Build output
+dist/
+build/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS generated files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+
+# Data directories
+data/
+backups/
+

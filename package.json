@@ -12,33 +12,38 @@
     "build:web": "node ./node_modules/.bin/tailwindcss -i ./web/src/styles.css -o ./web/public/styles.css",
     "test-alert": "curl -X POST http://localhost:5000/alert -H 'Content-Type: application/json' -d '{\"title\": \"Test Alert\", \"body\": \"This is a test alert from the command line\", \"severity\": \"info\"}'",
     "migrate": "node dist/db/migrate.js",
-    "test": "node test-smoke.js"
+    "test": "jest --detectOpenHandles --forceExit"
   },
   "devDependencies": {
+    "@jest/globals": "^30.0.0-beta.3",
     "@types/express": "^5.0.2",
-    "@types/node": "^18.18.0",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^18.19.110",
+    "@types/sqlite3": "^3.1.11",
     "autoprefixer": "^10.4.16",
+    "axios": "^1.9.0",
+    "discord.js": "^14.19.3",
+    "dotenv": "^16.5.0",
+    "jest": "^29.7.0",
     "postcss": "^8.4.31",
+    "sqlite3": "^5.1.7",
     "tailwindcss": "^3.3.5",
+    "ts-jest": "^29.3.4",
     "ts-node": "^10.9.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.8.3"
   },
   "dependencies": {
     "@types/bcrypt": "^5.0.2",
     "@types/cors": "^2.8.17",
     "@types/jsonwebtoken": "^9.0.2",
     "@types/socket.io": "^3.0.2",
-    "axios": "^1.7.7",
     "bcrypt": "^5.1.1",
     "caniuse-lite": "^1.0.30001720",
     "cors": "^2.8.5",
-    "discord.js": "^14.19.3",
-    "dotenv": "^16.3.1",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.1",
     "node-cron": "^3.0.3",
-    "socket.io": "^4.7.1",
-    "sqlite3": "^5.1.6"
+    "socket.io": "^4.7.1"
   },
   "description": "Autonomous Discord bot with system monitoring capabilities.",
   "repository": {
@@ -51,5 +56,8 @@
   "bugs": {
     "url": "https://github.com/NullMeDev/noxhime-bot/issues"
   },
-  "homepage": "https://github.com/NullMeDev/noxhime-bot#readme"
+  "homepage": "https://github.com/NullMeDev/noxhime-bot#readme",
+  "directories": {
+    "doc": "docs"
+  }
 }
