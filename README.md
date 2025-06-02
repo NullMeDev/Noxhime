@@ -360,3 +360,13 @@ Made With &#x1F49C by NullMeDev.</p>
 - Self-healing capabilities with automatic recovery
 - Sentinel Intelligence with log monitoring and suspicious behavior detection
 - Automated backup system with remote storage
+
+<p align="center">
+Contributions are welcome, either request here, or email me at null@nullme.dev! Please feel free to submit a pull request.
+</p>
+<p align="center">
+Consider donating at https://ko-fi.com/NullMeDev
+</p>
+<p align="center">
+Made With &#x1F49C by NullMeDev.</p>
+
