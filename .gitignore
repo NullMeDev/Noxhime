@@ -59,3 +59,10 @@ Thumbs.db
 data/
 backups/
 
+
+# Status page
+status-page/node_modules/
+status-page/dist/
+status-page/.env
+status-page/.env.*
+!status-page/.env.example
