@@ -12,6 +12,7 @@ const monitor_1 = require("./monitor");
 const sentinel_1 = require("./sentinel");
 const personality_1 = require("./personality");
 const whitelist_commands_1 = require("./whitelist-commands");
+const channel_check_1 = require("./channel-check");
 const fail2ban_1 = require("./fail2ban");
 const health_check_1 = require("./health-check");
 // Use require for modules with export issues
@@ -294,6 +295,16 @@ client.on('messageCreate', async (message) => {
     const content = message.content;
     const lowerContent = content.toLowerCase();
     const isTextChannel = message.channel.type === discord_js_1.ChannelType.GuildText;
+    // Check if message is in allowed channel (skip check for DMs)
+    if (isTextChannel && !(0, channel_check_1.isAllowedChannel)(message.channel)) {
+        console.log(`Message received in unauthorized channel: ${message.channel.id}`);
+        return;
+    }
+    // Check if message is in allowed channel (skip check for DMs)
+    if (isTextChannel && !(0, channel_check_1.isAllowedChannel)(message.channel)) {
+        console.log(`Message received in unauthorized channel: ${message.channel.id}`);
+        return;
+    }
     // BioLock v2 System - User-level protection for sensitive commands
     // Command handling
     if (content.startsWith(COMMAND_PREFIX) && isTextChannel) {
